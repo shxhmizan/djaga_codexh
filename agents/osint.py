@@ -37,6 +37,21 @@ def _is_scam_result(item: dict) -> bool:
     return any(token in corpus for token in ("scam", "fraud", "penipu", "penipuan", "phishing", "impersonat"))
 
 
+def _unique_sources(items: list[dict]) -> list[dict]:
+    """Keep actual Exa sources distinct before they reach the verdict/UI."""
+    seen: set[str] = set()
+    sources: list[dict] = []
+    for item in items:
+        url = str(item.get("url") or "").strip()
+        title = str(item.get("title") or "Public web result").strip()
+        key = url or title.lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        sources.append({"title": title[:240], "url": url, "published_date": item.get("publishedDate")})
+    return sources
+
+
 class OSINTAgent:
     async def run(self, **kwargs):
         text = (kwargs.get("text") or "").strip()
@@ -49,11 +64,23 @@ class OSINTAgent:
             return await mock_agents.osint(text=text)
         if not entities:
             return AgentResult(agent="osint", score=0.08, payload={"entities": [], "mentions": 0, "sources": [], "claim": "No named entity was available for a focused live-web scam search."})
-        queries = [f'"{entity}" Malaysia scam' for entity in entities]
-        batches = await asyncio.gather(*(search(query, num_results=4) for query in queries))
+        # Do not put "scam" in every query: doing so makes every returned
+        # result look like a scam hit and turns Exa's result limit into a fake
+        # evidence count. Search the entity first, then classify the returned
+        # source content independently.
+        queries = [query for entity in entities for query in (f'"{entity}" Malaysia', f'"{entity}" scam Malaysia')]
+        batches = await asyncio.gather(*(search(query, num_results=6) for query in queries))
         results = [item for batch in batches for item in batch]
         scam_results = [item for item in results if _is_scam_result(item)]
-        mentions = len(scam_results)
-        sources = [{"title": item.get("title", "Public web report"), "url": item.get("url", ""), "published_date": item.get("publishedDate")} for item in scam_results[:5]]
-        score = min(0.95, 0.12 + mentions * 0.16) if results else 0.08
-        return AgentResult(agent="osint", score=round(score, 3), payload={"entities": entities, "queries": queries, "mentions": mentions, "sources": sources, "provider": "exa", "claim": f"Exa found {mentions} scam-related public web report{'s' if mentions != 1 else ''} for {', '.join(entities)}."})
+        sources = _unique_sources(scam_results)[:5]
+        all_sources = _unique_sources(results)[:5]
+        score = min(0.78, 0.18 + len(sources) * 0.12) if sources else 0.08
+        if sources:
+            examples = "; ".join(f'“{source["title"]}”' for source in sources[:2])
+            claim = f"Exa searched live public sources for {', '.join(entities)}. Relevant sources include {examples}."
+        elif all_sources:
+            examples = "; ".join(f'“{source["title"]}”' for source in all_sources[:2])
+            claim = f"Exa searched live public sources for {', '.join(entities)} but found no scam-language match. Reviewed: {examples}."
+        else:
+            claim = f"Exa searched live public sources for {', '.join(entities)} but returned no usable sources."
+        return AgentResult(agent="osint", score=round(score, 3), payload={"entities": entities, "queries": queries, "scam_source_count": len(sources), "sources": sources or all_sources, "provider": "exa", "claim": claim})
