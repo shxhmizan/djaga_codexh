@@ -132,6 +132,7 @@ export default function ImageScan() {
               <ResultCard
                 result={result}
                 onReset={handleReset}
+                showTrace={false}
               />
             ) : (
               <div className="flex flex-col items-center justify-center py-20 lg:py-32">

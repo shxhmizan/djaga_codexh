@@ -7,7 +7,7 @@ import Badge from '../ui/Badge';
 import Button from '../ui/Button';
 import { isThreat, getVerdictLabel, getVerdictEmoji } from '../../utils/formatters';
 
-export default function ResultCard({ result, onReset }) {
+export default function ResultCard({ result, onReset, showTrace = true }) {
   const [showCard, setShowCard] = useState(false);
   const [showGauge, setShowGauge] = useState(false);
   const [showHighlights, setShowHighlights] = useState(false);
@@ -193,7 +193,7 @@ export default function ResultCard({ result, onReset }) {
               Scan Again
             </Button>
           </div>
-          {result.traceUrl && <a href={result.traceUrl} className="mt-3 w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl text-sm font-medium" style={{ color: 'var(--accent)', border: '1px solid var(--accent-border)' }}><Network size={16} /> View investigation trace</a>}
+          {showTrace && result.traceUrl && <a href={result.traceUrl} className="mt-3 w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl text-sm font-medium" style={{ color: 'var(--accent)', border: '1px solid var(--accent-border)' }}><Network size={16} /> View investigation trace</a>}
         </div>
       </div>
     </div>
