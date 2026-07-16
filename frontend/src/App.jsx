@@ -50,6 +50,7 @@ function App() {
           <Route path="/feed" element={<Feed />} />
           <Route path="/map" element={<Navigate to="/feed" replace />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/agent" element={<Navigate to="/chat" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
