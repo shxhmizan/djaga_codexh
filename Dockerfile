@@ -13,5 +13,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . ./
 COPY --from=frontend-build /build/frontend/dist ./frontend/dist
+# Fail the image build early if the SPA was not copied into the runtime image.
+RUN test -f ./frontend/dist/index.html
 EXPOSE 10000
 CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-10000}"]
