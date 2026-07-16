@@ -14,13 +14,14 @@ export function useScanner() {
   const [result, setResult] = useState(null);
   const [phase, setPhase] = useState(null);
   const [progress, setProgress] = useState(0);
+  const [traceEvents, setTraceEvents] = useState([]);
   const streamRef = useRef(null);
   const timersRef = useRef([]);
 
   const clearTimers = useCallback(() => { timersRef.current.forEach(clearTimeout); timersRef.current = []; }, []);
   const startScan = useCallback(async (type, options = {}) => {
     clearTimers(); streamRef.current?.close();
-    setIsScanning(true); setResult(null); setProgress(0); setPhase(PHASES[0]);
+    setIsScanning(true); setResult(null); setProgress(0); setPhase(PHASES[0]); setTraceEvents([]);
     const kind = apiKind(type);
     const requestAt = Date.now();
     try {
@@ -43,8 +44,14 @@ export function useScanner() {
       if (!analyzed.ok) throw new Error('Could not submit check');
       const stream = new EventSource(`/api/checks/${session_id}/stream`);
       streamRef.current = stream;
+      const recordEvent = (event) => {
+        try { setTraceEvents((current) => [...current, JSON.parse(event.data)]); } catch { /* ignore malformed SSE */ }
+      };
+      stream.addEventListener('trace', recordEvent);
+      stream.addEventListener('transcript', recordEvent);
       stream.addEventListener('risk', (event) => {
         const data = JSON.parse(event.data);
+        setTraceEvents((current) => [...current, data]);
         if (data.status !== 'done') return;
         const verdict = data.evidence?.verdict;
         if (!verdict) return;
@@ -71,5 +78,5 @@ export function useScanner() {
   }, [clearTimers]);
   const cancelScan = useCallback(() => { streamRef.current?.close(); clearTimers(); setIsScanning(false); setPhase(null); setProgress(0); }, [clearTimers]);
   const resetScan = useCallback(() => { cancelScan(); setResult(null); }, [cancelScan]);
-  return { isScanning, result, phase, progress, startScan, cancelScan, resetScan, PHASES, TOTAL_DURATION };
+  return { isScanning, result, phase, progress, traceEvents, startScan, cancelScan, resetScan, PHASES, TOTAL_DURATION };
 }

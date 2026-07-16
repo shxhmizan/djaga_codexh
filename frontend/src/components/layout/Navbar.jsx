@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, Volume2, VolumeX, Home, Newspaper, User, MessageCircle, Radar } from 'lucide-react';
+import { Shield, Volume2, VolumeX, Home, Newspaper, User, MessageCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useTranslation } from '../../hooks/useTranslation';
 
@@ -8,7 +8,6 @@ const NAV_KEYS = [
   { path: '/feed', labelKey: 'nav.feed', icon: Newspaper },
   { path: '/', labelKey: 'nav.home', icon: Home },
   { path: '/chat', labelKey: 'Assistant', icon: MessageCircle },
-  { path: '/osint', labelKey: 'OSINT', icon: Radar },
   { path: '/profile', labelKey: 'nav.profile', icon: User },
 ];
 

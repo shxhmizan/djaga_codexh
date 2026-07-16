@@ -136,31 +136,6 @@ def api_checks(djaga_session: str | None = Cookie(None)):
     return list_checks(user.id)
 
 
-@app.get("/api/osint/dashboard")
-def osint_dashboard(djaga_session: str | None = Cookie(None)):
-    """Live, user-scoped view of the real OSINT work held by active sessions."""
-    user = require_user(djaga_session)
-    logs: list[dict] = []
-    sources: list[dict] = []
-    sessions = sorted((session for session in manager.sessions.values() if session.user_id == user.id), key=lambda session: session.started, reverse=True)
-    for session in sessions[:25]:
-        result = session.results.get("osint")
-        for event in session.events:
-            if event.agent == "osint":
-                logs.append({"session_id": session.id, "kind": session.kind, **event.model_dump()})
-        if not result or result.payload.get("provider") != "exa":
-            continue
-        for source in result.payload.get("sources", []):
-            if isinstance(source, dict):
-                sources.append({"session_id": session.id, "kind": session.kind, "entities": result.payload.get("entities", []), "query": " · ".join(result.payload.get("queries", [])), **source})
-    return {
-        "mode": settings.agent_mode_for("osint"),
-        "exa_enabled": bool(settings.exa_api_key),
-        "logs": sorted(logs, key=lambda item: item["ts"], reverse=True)[:120],
-        "sources": sources[:100],
-    }
-
-
 @app.get("/api/checks/{session_id}/verdict")
 def api_verdict(session_id: str, djaga_session: str | None = Cookie(None)):
     user = require_user(djaga_session)
