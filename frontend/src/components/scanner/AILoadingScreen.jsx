@@ -13,6 +13,7 @@ const TOTAL_DURATION = PHASES.reduce((sum, p) => sum + p.duration, 0);
 export default function AILoadingScreen({ type = 'image', fileName, text, onComplete }) {
   const [currentPhase, setCurrentPhase] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [waitingForVerdict, setWaitingForVerdict] = useState(false);
   const [dotIndex, setDotIndex] = useState(0);
   const startTimeRef = useRef(Date.now());
   const animFrameRef = useRef(null);
@@ -23,7 +24,7 @@ export default function AILoadingScreen({ type = 'image', fileName, text, onComp
 
     function tick() {
       const elapsed = Date.now() - startTimeRef.current;
-      const pct = Math.min((elapsed / TOTAL_DURATION) * 100, 100);
+      const pct = Math.min((elapsed / TOTAL_DURATION) * 95, 95);
       setProgress(pct);
 
       // Determine current phase
@@ -37,11 +38,11 @@ export default function AILoadingScreen({ type = 'image', fileName, text, onComp
       }
 
       if (elapsed >= TOTAL_DURATION) {
-        setProgress(100);
+        // The visual setup has finished; do not pretend the real server-side
+        // model has completed. The overlay remains until its SSE verdict.
+        setProgress(95);
         setCurrentPhase(PHASES.length - 1);
-        setTimeout(() => {
-          if (onComplete) onComplete();
-        }, 200);
+        setWaitingForVerdict(true);
         return;
       }
 
@@ -104,7 +105,7 @@ export default function AILoadingScreen({ type = 'image', fileName, text, onComp
             animation: 'fadeIn 0.3s ease',
           }}
         >
-          {PHASES[currentPhase]?.label}
+          {waitingForVerdict ? 'Model inference in progress — awaiting live verdict' : PHASES[currentPhase]?.label}
         </span>
       </div>
 
@@ -119,7 +120,7 @@ export default function AILoadingScreen({ type = 'image', fileName, text, onComp
           border: '1px solid var(--border)',
         }}
       >
-        {type === 'image' && <ImageAnimation fileName={fileName} />}
+        {type === 'image' && <ImageAnimation fileName={fileName} progress={progress} />}
         {type === 'text' && <TextAnimation text={text} />}
         {type === 'voice' && <VoiceAnimation />}
       </div>
@@ -177,7 +178,7 @@ export default function AILoadingScreen({ type = 'image', fileName, text, onComp
 }
 
 // Image scan animation — scan beam + corner brackets
-function ImageAnimation({ fileName }) {
+function ImageAnimation({ fileName, progress }) {
   const [beamY, setBeamY] = useState(0);
 
   useEffect(() => {
@@ -194,6 +195,15 @@ function ImageAnimation({ fileName }) {
     raf = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(raf);
   }, []);
+
+  const percentage = Math.round(progress);
+  const log = percentage < 22
+    ? 'Validating image upload'
+    : percentage < 52
+      ? 'Reading image pixels and metadata'
+      : percentage < 82
+        ? 'Running authenticity classifier'
+        : 'Calibrating forensic confidence';
 
   return (
     <div className="relative w-full h-full flex items-center justify-center">
@@ -246,13 +256,16 @@ function ImageAnimation({ fileName }) {
       {/* Corner brackets */}
       <CornerBrackets />
 
-      {/* Analysis text */}
-      <div
-        className="absolute bottom-4 left-0 right-0 text-center text-xs"
-        style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}
-      >
-        Analysing facial geometry
-        <AnimatedDots />
+      {/* Live scan log: intentionally generic because the backend model may
+          analyse any image, not only a face. */}
+      <div className="absolute bottom-4 left-4 right-4 rounded-lg px-3 py-2.5" style={{ background: 'rgba(8, 20, 16, .78)', border: '1px solid rgba(79, 209, 165, .2)', fontFamily: 'var(--font-mono)' }}>
+        <div className="flex items-center justify-between text-[10px] uppercase tracking-[.14em]" style={{ color: 'var(--accent)' }}>
+          <span>Forensic process log</span><span>{percentage}%</span>
+        </div>
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-primary)' }}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent)', boxShadow: '0 0 8px var(--accent)' }} />
+          {log}<AnimatedDots />
+        </div>
       </div>
     </div>
   );

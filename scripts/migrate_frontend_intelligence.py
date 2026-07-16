@@ -21,9 +21,9 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = process.argv[1];
 const load = name => import(pathToFileURL(path.join(root, 'src', 'data', name)).href);
-const [map, insights, feed, gov, trust] = await Promise.all([
+const [map, insights, feed, gov] = await Promise.all([
   load('dummyMapData.js'), load('dummyAIInsights.js'), load('dummyScamFeed.js'),
-  load('dummyGovCheck.js'), load('dummyTrustScore.js'),
+  load('dummyGovCheck.js'),
 ]);
 console.log(JSON.stringify({
   map_points: map.SCAM_POINTS.map((point, index) => ({ id: `point-${index + 1}`, ...point })),
@@ -33,7 +33,6 @@ console.log(JSON.stringify({
   live_stats: [{ id: 'current', ...insights.LIVE_STATS }],
   feed: feed.SCAM_FEED,
   gov_checks: gov.GOV_CHECKS,
-  trust_breakdown: [{ id: 'default', ...trust.TRUST_BREAKDOWN }],
   top_accounts: [['512802774281',47],['17900052144',20],['26700077605',15],['1013041100083926',15],['26444100022578',14],['25810500018077',14],['21220000087743',13],['8881032092097',12],['4946775140',11]].map(([identifier,reports],index)=>({id:`account-${index+1}`,identifier,reports})),
   top_phones: [['0104269914',21],['0179764986',17],['01123520121',15],['01161051865',9],['0163411403',9],['0142897177',9],['0142472412',9],['01125054956',9],['0142447614',8],['28042221522',8]].map(([identifier,reports],index)=>({id:`phone-${index+1}`,identifier,reports})),
   monthly_trend: [{month:'Feb',value:412},{month:'Mar',value:505},{month:'Apr',value:468},{month:'May',value:621},{month:'Jun',value:714},{month:'Jul',value:847}].map(item=>({id:item.month.toLowerCase(),...item})),

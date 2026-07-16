@@ -7,3 +7,12 @@ httpx
 langgraph
 psycopg[binary]
 pytest
+# Optional at startup; loaded lazily by real image/voice forensics agents.
+pillow
+numpy
+soundfile
+transformers
+torch
+# Optional Databricks Vector Search client. Service-principal credentials are
+# supplied by Databricks Apps, never stored in this repository.
+databricks-vectorsearch

@@ -25,6 +25,11 @@ class Settings:
     elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "")
     el_voice_id: str = os.getenv("EL_VOICE_ID", "")
     exa_api_key: str = os.getenv("EXA_API_KEY", "")
+    # Hugging Face models are loaded lazily so mock-mode installs stay fast and
+    # never download model weights during startup.
+    image_model_id: str = os.getenv("IMAGE_MODEL_ID", "jacoballessio/ai-image-detect-distilled")
+    voice_model_id: str = os.getenv("VOICE_MODEL_ID", "abhishtagatya/wav2vec2-base-960h-itw-deepfake")
+    hf_token: str = os.getenv("HF_TOKEN", "")
     danger_threshold: float = float(os.getenv("DANGER_THRESHOLD", "0.65"))
     caution_threshold: float = float(os.getenv("CAUTION_THRESHOLD", "0.35"))
     mock_delay_scale: float = float(os.getenv("MOCK_DELAY_SCALE", "1"))
@@ -37,6 +42,25 @@ class Settings:
         object.__setattr__(self, "text_weights", {"behavioral": .50, "registry": .25, "osint": .25})
         object.__setattr__(self, "image_weights", {"image_forensics": .70, "osint": .30})
     def agent_mode_for(self, agent: str) -> str:
-        return os.getenv(f"{agent.upper()}_MODE", self.agent_mode).lower()
+        """Return the requested mode without making one missing key fatal.
+
+        ``AGENT_MODE=mock`` remains the safe default.  A global ``real`` mode
+        can be narrowed with e.g. ``AGENT_MODE=real:behavioral,osint`` and an
+        explicit ``BEHAVIORAL_MODE=mock`` always wins.  Agents decide whether
+        their own credentials are sufficient and otherwise use their mock
+        implementation; a configured service that fails is surfaced as an
+        unavailable signal by the pipeline.
+        """
+        # BEHAVIORAL_MODE already means classifier strategy (fewshot vs
+        # Databricks), so its agent override uses the unambiguous suffix below.
+        explicit = os.getenv(f"{agent.upper()}_AGENT_MODE")
+        if not explicit and agent != "behavioral":
+            explicit = os.getenv(f"{agent.upper()}_MODE")
+        if explicit:
+            return explicit.lower()
+        if self.agent_mode.startswith("real:"):
+            requested = {item.strip().replace("-", "_") for item in self.agent_mode.split(":", 1)[1].split(",")}
+            return "real" if agent in requested else "mock"
+        return self.agent_mode
 
 settings = Settings()

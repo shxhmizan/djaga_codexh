@@ -27,8 +27,19 @@ export function useScanner() {
       const started = await fetch('/api/checks', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind }) });
       if (!started.ok) throw new Error('Could not start check');
       const { session_id } = await started.json();
-      const body = options.text ? JSON.stringify({ text: options.text }) : new FormData();
-      const analyzed = await fetch(`/api/checks/${session_id}/analyze`, { method: 'POST', credentials: 'include', headers: options.text ? { 'Content-Type': 'application/json' } : undefined, body });
+      let body;
+      let headers;
+      if (options.text) {
+        body = JSON.stringify({ text: options.text });
+        headers = { 'Content-Type': 'application/json' };
+      } else if (options.file) {
+        body = new FormData();
+        body.append('file', options.file, options.file.name || `${kind}-upload`);
+        if (options.context) body.append('text', options.context);
+      } else {
+        throw new Error('Choose a file or enter a message before starting a scan.');
+      }
+      const analyzed = await fetch(`/api/checks/${session_id}/analyze`, { method: 'POST', credentials: 'include', headers, body });
       if (!analyzed.ok) throw new Error('Could not submit check');
       const stream = new EventSource(`/api/checks/${session_id}/stream`);
       streamRef.current = stream;
@@ -49,7 +60,8 @@ export function useScanner() {
       stream.onerror = () => { /* EventSource reconnects automatically; polling can be layered here by the trace client. */ };
     } catch (error) {
       setIsScanning(false); setPhase(null);
-      setResult({ id: `offline-${Date.now()}`, type, verdict: 'safe', confidence: 0, highlights: ['DJAGA could not reach the investigation service. Please try again.'], error: true });
+      setResult({ id: `failed-${Date.now()}`, type, verdict: 'safe', confidence: 0, highlights: [error.message || 'DJAGA could not reach the investigation service. Please try again.'], error: true });
+      return;
     }
     const startedAt = Date.now();
     const interval = setInterval(() => setProgress(Math.min(95, ((Date.now() - startedAt) / TOTAL_DURATION) * 100)), 100);

@@ -11,6 +11,7 @@ import Profile from './pages/Profile';
 import Feed from './pages/Feed';
 import Login from './pages/Login';
 import Chat from './pages/Chat';
+import Trace from './pages/Trace';
 import NotFound from './pages/NotFound';
 import { useApp } from './context/AppContext';
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Mic, Upload, Shield, Square } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import ScanButton from '../components/scanner/ScanButton';
@@ -17,13 +17,15 @@ export default function VoiceScan() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [hasRecording, setHasRecording] = useState(false);
   const [hasUpload, setHasUpload] = useState(false);
-  const [showLoading, setShowLoading] = useState(false);
-  const [forceVerdict, setForceVerdict] = useState(null);
+  const [audioFile, setAudioFile] = useState(null);
   const [waveformBars, setWaveformBars] = useState(Array(20).fill(20));
   const { isScanning, result, startScan, cancelScan, resetScan } = useScanner();
   const { addToast } = useApp();
   const { t } = useTranslation();
   const sound = useSound();
+  const recorderRef = useRef(null);
+  const streamRef = useRef(null);
+  const uploadRef = useRef(null);
 
   useEffect(() => {
     document.title = `${t('voice.title')} — DJAGA`;
@@ -58,42 +60,46 @@ export default function VoiceScan() {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  const handleRecord = () => {
+  const handleRecord = async () => {
     if (isRecording) {
-      setIsRecording(false);
-      setHasRecording(true);
-    } else {
-      setIsRecording(true);
-      setRecordingTime(0);
-      setHasRecording(false);
+      recorderRef.current?.stop();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const supported = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.('audio/mp4') ? 'audio/mp4' : undefined;
+      const recorder = new MediaRecorder(stream, supported ? { mimeType: supported } : undefined);
+      const chunks = [];
+      recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+      recorder.onstop = () => {
+        const type = recorder.mimeType || 'audio/webm';
+        const extension = type.includes('mp4') ? 'm4a' : type.includes('mpeg') ? 'mp3' : 'webm';
+        const file = new File(chunks, `voice-note.${extension}`, { type });
+        setAudioFile(file); setHasRecording(file.size > 0); setIsRecording(false);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+      recorderRef.current = recorder; streamRef.current = stream;
+      setRecordingTime(0); setHasRecording(false); setAudioFile(null); recorder.start(1000); setIsRecording(true);
+    } catch {
+      addToast({ type: 'warning', message: 'Microphone permission is required to record a voice note.' });
     }
   };
 
-  const handleDemoSelect = useCallback((verdict) => {
-    setForceVerdict(verdict);
-    setHasRecording(true);
-    setIsRecording(false);
-    sound.uploadSuccess();
-  }, [sound]);
+  const handleUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('audio/')) { addToast({ type: 'warning', message: 'Choose an audio file (M4A, MP3, WAV, WebM, or OGG).' }); return; }
+    setAudioFile(file); setHasUpload(true); setHasRecording(false); sound.uploadSuccess();
+  };
 
   const handleScan = useCallback(() => {
     haptics.scan();
     sound.scanStart();
-    setShowLoading(true);
-    startScan('voice', { forceVerdict: forceVerdict || 'real', fileName: 'voice_recording.m4a' });
-  }, [startScan, forceVerdict, sound]);
-
-  const handleLoadingComplete = useCallback((data) => {
-    setShowLoading(false);
-    if (data?.cancelled) {
-      cancelScan();
-      haptics.reset();
-      sound.reset();
-    }
-  }, [cancelScan, sound]);
+    startScan('voice', { file: audioFile, fileName: audioFile?.name });
+  }, [startScan, audioFile, sound]);
 
   useEffect(() => {
-    if (result && !showLoading) {
+    if (result && !isScanning) {
       const threat = result.verdict === 'fake';
       if (threat) {
         haptics.threat();
@@ -103,15 +109,16 @@ export default function VoiceScan() {
         sound.resultSafe();
       }
     }
-  }, [result, showLoading, sound]);
+  }, [result, isScanning, sound]);
 
   const handleReset = useCallback(() => {
     resetScan();
     setHasRecording(false);
     setHasUpload(false);
+    setAudioFile(null);
     setIsRecording(false);
     setRecordingTime(0);
-    setForceVerdict(null);
+    streamRef.current?.getTracks().forEach((track) => track.stop());
     haptics.reset();
     sound.reset();
   }, [resetScan, sound]);
@@ -124,10 +131,11 @@ export default function VoiceScan() {
 
   return (
     <PageWrapper>
-      {showLoading && (
+      {isScanning && (
         <AILoadingScreen
           type="voice"
-          onComplete={handleLoadingComplete}
+          fileName={audioFile?.name}
+          onComplete={(data) => { if (data?.cancelled) cancelScan(); }}
         />
       )}
 
@@ -147,7 +155,7 @@ export default function VoiceScan() {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => { setActiveTab(tab.id); setHasRecording(false); setHasUpload(false); }}
+              onClick={() => { setActiveTab(tab.id); setHasRecording(false); setHasUpload(false); setAudioFile(null); }}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all duration-200 min-h-[44px]"
               style={{
                 background: activeTab === tab.id ? 'var(--bg-tertiary)' : 'transparent',
@@ -215,47 +223,25 @@ export default function VoiceScan() {
 
         {/* Upload Tab */}
         {activeTab === 'upload' && !result && (
+          <>
           <div
             className="flex flex-col items-center justify-center py-16 rounded-2xl cursor-pointer"
             style={{
               border: '2px dashed var(--accent-border)',
               background: 'rgba(108,99,255,0.03)',
             }}
-            onClick={() => { setHasUpload(true); sound.uploadSuccess(); }}
+            onClick={() => uploadRef.current?.click()}
           >
             <Upload size={32} style={{ color: 'var(--accent)', opacity: 0.6 }} />
             <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {hasUpload ? t('voice.audioLoaded') : t('voice.clickUpload')}
+              {hasUpload ? `${t('voice.audioLoaded')} ${audioFile?.name || ''}` : t('voice.clickUpload')}
             </p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
               MP3, WAV, M4A
             </p>
           </div>
-        )}
-
-        {/* Demo buttons */}
-        {!result && (
-          <div className="mt-6 mb-4">
-            <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>
-              {t('voice.tryDemo')}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleDemoSelect('real')}
-                className="px-4 py-2 rounded-full text-xs font-medium transition-all duration-200 hover:-translate-y-[1px] min-h-[44px]"
-                style={{ background: 'transparent', border: '1px solid var(--safe-border)', color: '#86EFAC', cursor: 'pointer' }}
-              >
-                {t('voice.realVoice')}
-              </button>
-              <button
-                onClick={() => handleDemoSelect('fake')}
-                className="px-4 py-2 rounded-full text-xs font-medium transition-all duration-200 hover:-translate-y-[1px] min-h-[44px]"
-                style={{ background: 'transparent', border: '1px solid var(--threat-border)', color: '#FCA5A5', cursor: 'pointer' }}
-              >
-                {t('voice.aiVoice')}
-              </button>
-            </div>
-          </div>
+          <input ref={uploadRef} type="file" accept="audio/mp4,audio/x-m4a,audio/mpeg,audio/wav,audio/x-wav,audio/webm,audio/ogg" className="hidden" onChange={handleUpload} />
+          </>
         )}
 
         {/* Scan button */}
@@ -271,7 +257,7 @@ export default function VoiceScan() {
         )}
 
         {/* Result */}
-        {result && !showLoading && (
+        {result && !isScanning && (
           <div className="mt-8">
             <ResultCard
               result={result}

@@ -50,9 +50,16 @@ class PipelineManager:
     async def invoke_agent(self,s:Session,name:str)->AgentResult:
         await self.emit(s,"trace",name,"started",f"{name.replace('_',' ').title()} is investigating.")
         try:
-            await asyncio.sleep({"intake":.5,"forensics":4,"transcribe":6,"behavioral":7,"registry":9,"osint":12,"image_forensics":5}.get(name,.5)*settings.mock_delay_scale)
+            # Preserve the useful live demonstration cadence in mock mode only.
+            # Real providers should start immediately and report their genuine
+            # latency through the trace stream.
+            if settings.agent_mode_for(name) != "real":
+                await asyncio.sleep({"intake":.5,"forensics":4,"transcribe":6,"behavioral":7,"registry":9,"osint":12,"image_forensics":5}.get(name,.5)*settings.mock_delay_scale)
             result=await get_agent(name).run(kind=s.kind,text=s.text,blob=s.blob,content_type=s.content_type)
             s.results[name]=result
+            if result.unavailable:
+                await self.emit(s,"trace",name,"unavailable",result.payload.get("claim",f"{name.title()} was unavailable; DJAGA continued without it."))
+                return result
             if name=="transcribe":
                 transcript=result.payload.get("transcript","");s.text=transcript
                 await self.emit(s,"transcript",name,"evidence",transcript,evidence={"transcript":transcript})
