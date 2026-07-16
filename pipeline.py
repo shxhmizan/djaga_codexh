@@ -1,4 +1,4 @@
-"""Async investigation orchestration. LangGraph describes the routing; execution stays observable through events."""
+"""LangGraph-powered investigation orchestration with observable SSE events."""
 from __future__ import annotations
 import asyncio
 import time
@@ -21,7 +21,9 @@ class Session:
     text:str|None=None; blob:bytes|None=None; content_type:str|None=None
 
 class PipelineManager:
-    def __init__(self):self.sessions:dict[str,Session]={}
+    def __init__(self):
+        self.sessions:dict[str,Session]={}
+        self.graphs:dict[str,Any]={}
     async def create(self,user_id:str,kind:str,demo:bool=False)->str:
         session_id=str(uuid.uuid4()); self.sessions[session_id]=Session(session_id,user_id,kind)
         if not demo:create_check(session_id,user_id,kind)
@@ -69,19 +71,73 @@ class PipelineManager:
         s.started=True
         if s.user_id != "demo":update_check(s.id,"running")
         try:
-            await self.invoke_agent(s,"intake")
-            names = (["forensics","transcribe","registry","osint"] if s.kind in {"call","voice"} else ["behavioral","registry","osint"] if s.kind=="message" else ["image_forensics","osint"])
-            results=await asyncio.gather(*(self.invoke_agent(s,n) for n in names))
-            if s.kind in {"call","voice"}:
-                # Behavioral must see completed transcription but remains independent of other investigations.
-                await self.invoke_agent(s,"behavioral")
-            verdict=self.fuse(s)
-            s.results['verdict']=AgentResult(agent='verdict',score=verdict.risk,payload=verdict.model_dump())
-            await self.emit(s,"trace","verdict","done",self._verdict_message(verdict),verdict.risk,{"verdict":verdict.model_dump()})
-            await self.emit(s,"risk","verdict","done",verdict.level.title(),verdict.risk,{"verdict":verdict.model_dump()})
-            if s.user_id != "demo":save_verdict(s.id,verdict)
+            graph = self.graph_for(s.kind)
+            if graph is None:
+                await self._run_fallback(s)
+            else:
+                # This is the production execution path: LangGraph schedules the
+                # fan-out and waits at the Verdict join before completing a session.
+                await graph.ainvoke({"session": s})
         finally:
             s.complete=True
+
+    async def _finish_verdict(self, s: Session) -> None:
+        verdict=self.fuse(s)
+        s.results['verdict']=AgentResult(agent='verdict',score=verdict.risk,payload=verdict.model_dump())
+        await self.emit(s,"trace","verdict","done",self._verdict_message(verdict),verdict.risk,{"verdict":verdict.model_dump()})
+        await self.emit(s,"risk","verdict","done",verdict.level.title(),verdict.risk,{"verdict":verdict.model_dump()})
+        if s.user_id != "demo":save_verdict(s.id,verdict)
+
+    async def _run_fallback(self, s: Session) -> None:
+        """Only used if LangGraph cannot import in a constrained development environment."""
+        await self.invoke_agent(s,"intake")
+        names = (["forensics","transcribe","registry","osint"] if s.kind in {"call","voice"} else ["behavioral","registry","osint"] if s.kind=="message" else ["image_forensics","osint"])
+        await asyncio.gather(*(self.invoke_agent(s,n) for n in names))
+        if s.kind in {"call","voice"}: await self.invoke_agent(s,"behavioral")
+        await self._finish_verdict(s)
+
+    def graph_for(self, kind: str):
+        if StateGraph is None:
+            return None
+        kind = "audio" if kind in {"call", "voice"} else kind
+        if kind in self.graphs:
+            return self.graphs[kind]
+        graph = StateGraph(dict)
+        async def agent_node(state: dict, name: str):
+            await self.invoke_agent(state["session"], name)
+            # The Session object is shared in graph input; returning no update
+            # preserves it for every parallel branch and the join node.
+            return None
+        async def intake(state: dict): return await agent_node(state, "intake")
+        async def forensics(state: dict): return await agent_node(state, "forensics")
+        async def transcribe(state: dict): return await agent_node(state, "transcribe")
+        async def behavioral(state: dict): return await agent_node(state, "behavioral")
+        async def registry(state: dict): return await agent_node(state, "registry")
+        async def osint(state: dict): return await agent_node(state, "osint")
+        async def image_forensics(state: dict): return await agent_node(state, "image_forensics")
+        async def verdict(state: dict):
+            await self._finish_verdict(state["session"])
+            return None
+        graph.add_node("intake", intake); graph.add_node("behavioral", behavioral)
+        graph.add_node("registry", registry); graph.add_node("osint", osint); graph.add_node("verdict", verdict)
+        graph.add_edge(START, "intake")
+        if kind == "audio":
+            graph.add_node("forensics", forensics); graph.add_node("transcribe", transcribe)
+            graph.add_edge("intake", "forensics"); graph.add_edge("intake", "transcribe")
+            graph.add_edge("intake", "registry"); graph.add_edge("intake", "osint")
+            graph.add_edge("transcribe", "behavioral")
+            graph.add_edge(["forensics", "behavioral", "registry", "osint"], "verdict")
+        elif kind == "message":
+            graph.add_edge("intake", "behavioral"); graph.add_edge("intake", "registry"); graph.add_edge("intake", "osint")
+            graph.add_edge(["behavioral", "registry", "osint"], "verdict")
+        else:
+            graph.add_node("image_forensics", image_forensics)
+            graph.add_edge("intake", "image_forensics"); graph.add_edge("intake", "osint")
+            graph.add_edge(["image_forensics", "osint"], "verdict")
+        graph.add_edge("verdict", END)
+        compiled = graph.compile()
+        self.graphs[kind] = compiled
+        return compiled
     def fuse(self,s:Session)->Verdict:
         weights=settings.audio_weights if s.kind in {"call","voice"} else settings.text_weights if s.kind=="message" else settings.image_weights
         available={n:r for n,r in s.results.items() if n in weights and r.score is not None and not r.unavailable}
@@ -99,10 +155,6 @@ class PipelineManager:
 manager=PipelineManager()
 
 def build_graph():
-    """A compact LangGraph definition for deployment introspection and future real-agent routing."""
-    if StateGraph is None:return None
-    graph=StateGraph(dict)
-    graph.add_node("intake",lambda s:s);graph.add_node("investigate",lambda s:s);graph.add_node("verdict",lambda s:s)
-    graph.add_edge(START,"intake");graph.add_edge("intake","investigate");graph.add_edge("investigate","verdict");graph.add_edge("verdict",END)
-    return graph.compile()
+    """Expose the real audio graph for graph inspection and deployment diagnostics."""
+    return manager.graph_for("call")
 graph=build_graph()

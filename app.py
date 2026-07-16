@@ -281,7 +281,7 @@ async def demo_stream():
 
 @app.get("/healthz")
 def health():
-    return {"ok": True, "agents": {name: settings.agent_mode_for(name) for name in settings.agent_names}, "mode": settings.agent_mode}
+    return {"ok": True, "agents": {name: settings.agent_mode_for(name) for name in settings.agent_names}, "mode": settings.agent_mode, "langgraph": manager.graph_for("call") is not None}
 
 
 @app.get("/{path:path}")

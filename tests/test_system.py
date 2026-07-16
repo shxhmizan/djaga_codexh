@@ -31,6 +31,7 @@ def test_auth_feed_and_mock_pipeline():
   assert len(verdict['evidence'])>=2
 def test_demo_stream_is_public():
  with TestClient(app) as client:
+  assert client.get('/healthz').json()['langgraph'] is True
   response=client.get('/api/demo/stream');assert response.status_code==200
 
 def test_chat_and_agent_failure_do_not_break_a_check(monkeypatch):
