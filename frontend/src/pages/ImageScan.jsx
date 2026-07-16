@@ -73,10 +73,6 @@ export default function ImageScan() {
     sound.reset();
   }, [resetScan, sound]);
 
-  const handleDownloadReport = useCallback(() => {
-    addToast({ type: 'success', message: 'Report downloaded successfully.' });
-  }, [addToast]);
-
   const hasFile = !!preview;
 
   return (
@@ -97,6 +93,11 @@ export default function ImageScan() {
         <p className="text-sm mb-8" style={{ color: 'var(--text-secondary)' }}>
           {t('image.subtitle')}
         </p>
+
+        <div className="mb-6 rounded-2xl px-4 py-3 flex items-start gap-3" style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)' }}>
+          <div className="mt-0.5 w-2 h-2 rounded-full" style={{ background: 'var(--accent)', boxShadow: '0 0 10px var(--accent)' }} />
+          <div><p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>AI image detection</p><p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>DJAGA runs a local authenticity classifier on the uploaded pixels and returns its real/fake confidence with traceable evidence.</p></div>
+        </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Left column — Input */}
@@ -131,7 +132,6 @@ export default function ImageScan() {
               <ResultCard
                 result={result}
                 onReset={handleReset}
-                onDownloadReport={handleDownloadReport}
               />
             ) : (
               <div className="flex flex-col items-center justify-center py-20 lg:py-32">

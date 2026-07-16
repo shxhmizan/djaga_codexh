@@ -13,6 +13,7 @@ const TOTAL_DURATION = PHASES.reduce((sum, p) => sum + p.duration, 0);
 export default function AILoadingScreen({ type = 'image', fileName, text, onComplete }) {
   const [currentPhase, setCurrentPhase] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [waitingForVerdict, setWaitingForVerdict] = useState(false);
   const [dotIndex, setDotIndex] = useState(0);
   const startTimeRef = useRef(Date.now());
   const animFrameRef = useRef(null);
@@ -23,7 +24,7 @@ export default function AILoadingScreen({ type = 'image', fileName, text, onComp
 
     function tick() {
       const elapsed = Date.now() - startTimeRef.current;
-      const pct = Math.min((elapsed / TOTAL_DURATION) * 100, 100);
+      const pct = Math.min((elapsed / TOTAL_DURATION) * 95, 95);
       setProgress(pct);
 
       // Determine current phase
@@ -37,11 +38,11 @@ export default function AILoadingScreen({ type = 'image', fileName, text, onComp
       }
 
       if (elapsed >= TOTAL_DURATION) {
-        setProgress(100);
+        // The visual setup has finished; do not pretend the real server-side
+        // model has completed. The overlay remains until its SSE verdict.
+        setProgress(95);
         setCurrentPhase(PHASES.length - 1);
-        setTimeout(() => {
-          if (onComplete) onComplete();
-        }, 200);
+        setWaitingForVerdict(true);
         return;
       }
 
@@ -104,7 +105,7 @@ export default function AILoadingScreen({ type = 'image', fileName, text, onComp
             animation: 'fadeIn 0.3s ease',
           }}
         >
-          {PHASES[currentPhase]?.label}
+          {waitingForVerdict ? 'Model inference in progress — awaiting live verdict' : PHASES[currentPhase]?.label}
         </span>
       </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, AlertTriangle, RotateCcw, Download, Network } from 'lucide-react';
+import { Shield, AlertTriangle, RotateCcw, Network } from 'lucide-react';
 import ConfidenceGauge from './ConfidenceGauge';
 import KeywordPills from './KeywordPills';
 import ParticleBurst from './ParticleBurst';
@@ -7,7 +7,7 @@ import Badge from '../ui/Badge';
 import Button from '../ui/Button';
 import { isThreat, getVerdictLabel, getVerdictEmoji } from '../../utils/formatters';
 
-export default function ResultCard({ result, onReset, onDownloadReport }) {
+export default function ResultCard({ result, onReset }) {
   const [showCard, setShowCard] = useState(false);
   const [showGauge, setShowGauge] = useState(false);
   const [showHighlights, setShowHighlights] = useState(false);
@@ -187,14 +187,10 @@ export default function ResultCard({ result, onReset, onDownloadReport }) {
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-3">
-            <Button variant="ghost" size="md" onClick={onReset} className="flex-1">
+          <div>
+            <Button variant="ghost" size="md" onClick={onReset} className="w-full">
               <RotateCcw size={16} />
               Scan Again
-            </Button>
-            <Button variant="secondary" size="md" onClick={onDownloadReport} className="flex-1">
-              <Download size={16} />
-              Download Report
             </Button>
           </div>
           {result.traceUrl && <a href={result.traceUrl} className="mt-3 w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl text-sm font-medium" style={{ color: 'var(--accent)', border: '1px solid var(--accent-border)' }}><Network size={16} /> View investigation trace</a>}
