@@ -84,40 +84,40 @@ function buildPopupHTML(point, scamTypes) {
 
   return `
     <div style="width:260px;font-family:'Inter',sans-serif">
-      <div style="padding:14px 16px 10px;border-bottom:1px solid #E8E6FF">
+      <div style="padding:14px 16px 10px;border-bottom:1px solid rgba(207,255,234,.20)">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
           <span style="font-size:18px">${typeData.emoji || '📍'}</span>
           <span style="font-size:10px;font-weight:600;padding:2px 10px;border-radius:999px;background:${typeData.color}15;color:${typeData.color};border:1px solid ${typeData.color}30;text-transform:uppercase;letter-spacing:0.5px">
             ${typeData.label || point.type}
           </span>
         </div>
-        <div style="font-size:15px;font-weight:700;color:#0F0E1A">${point.area}</div>
-        <div style="font-size:11px;color:#9090B0">Malaysia</div>
+        <div style="font-size:15px;font-weight:700;color:#F4FFF9">${point.area}</div>
+        <div style="font-size:11px;color:#B7C9C0">Malaysia</div>
       </div>
-      <div style="padding:10px 16px;border-bottom:1px solid #E8E6FF;display:flex;justify-content:space-between;align-items:center">
+      <div style="padding:10px 16px;border-bottom:1px solid rgba(207,255,234,.20);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <span style="font-size:18px;font-weight:700;color:#0F0E1A">${point.count}</span>
-          <span style="font-size:11px;color:#9090B0;margin-left:4px">reports</span>
+          <span style="font-size:18px;font-weight:700;color:#F4FFF9">${point.count}</span>
+          <span style="font-size:11px;color:#B7C9C0;margin-left:4px">reports</span>
         </div>
-        <span style="font-size:11px;color:#9090B0">${timeLabel}</span>
+        <span style="font-size:11px;color:#B7C9C0">${timeLabel}</span>
       </div>
-      <div style="padding:10px 16px;border-bottom:1px solid #E8E6FF">
+      <div style="padding:10px 16px;border-bottom:1px solid rgba(207,255,234,.20)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-size:10px;color:#9090B0;text-transform:uppercase;font-family:'Space Mono',monospace">Severity</span>
+          <span style="font-size:10px;color:#B7C9C0;text-transform:uppercase;font-family:'Space Mono',monospace">Severity</span>
           <span style="font-size:10px;font-weight:600;color:${severityColor}">${severityLabel}</span>
         </div>
-        <div style="height:4px;border-radius:2px;background:#F2F1FE;overflow:hidden">
+        <div style="height:4px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden">
           <div style="height:100%;width:${severityPct * 100}%;border-radius:2px;background:${severityColor};transition:width 0.5s ease"></div>
         </div>
       </div>
-      <div style="padding:10px 16px 8px;font-size:11px;color:#4A4A6A;line-height:1.5">
+      <div style="padding:10px 16px 8px;font-size:11px;color:#D3E3D9;line-height:1.5">
         ${typeData.description || ''}
       </div>
       <div style="padding:8px 16px 14px;display:flex;gap:8px">
-        <button style="flex:1;padding:6px 12px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #6C63FF;background:#6C63FF;color:#FFFFFF;cursor:pointer">
+        <button style="flex:1;padding:6px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid #4FD1A5;background:#4FD1A5;color:#082017;cursor:pointer">
           View full report
         </button>
-        <button onclick="navigator.clipboard.writeText('⚠️ Scam alert in ${point.area}: ${typeData.label}. Stay safe! — DJAGA')" style="padding:6px 12px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #E8E6FF;background:#FFFFFF;color:#4A4A6A;cursor:pointer">
+        <button onclick="navigator.clipboard.writeText('⚠️ Scam alert in ${point.area}: ${typeData.label}. Stay safe! — DJAGA')" style="padding:6px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid rgba(207,255,234,.32);background:rgba(255,255,255,.10);color:#F4FFF9;cursor:pointer">
           Share
         </button>
       </div>
