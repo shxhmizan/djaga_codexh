@@ -54,13 +54,40 @@ export function useScanner() {
     return { ...matches[Math.floor(Math.random() * matches.length)] };
   }, []);
 
-  const startScan = useCallback((type, options = {}) => {
+  const startScan = useCallback(async (type, options = {}) => {
     const { forceVerdict, fileName, text } = options;
     cancelRef.current = false;
     setIsScanning(true);
     setResult(null);
     setPhase(PHASES[0]);
     setProgress(0);
+
+    // The UI progress remains smooth, while the verdict itself comes from the real
+    // FastAPI session and its SSE agent stream.
+    try {
+      const response = await fetch('/api/checks', {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: type }),
+      });
+      const { session_id } = await response.json();
+      const stream = new EventSource(`/api/checks/${session_id}/stream`);
+      stream.addEventListener('risk', (event) => {
+        const data = JSON.parse(event.data);
+        if (data.status !== 'done') return;
+        const verdict = data.evidence || {};
+        const liveResult = {
+          id: session_id, type, timestamp: new Date().toISOString(),
+          verdict: verdict.level === 'danger' ? (type === 'image' || type === 'voice' ? 'fake' : 'scam') : 'safe',
+          confidence: Math.round((verdict.risk || data.score || .77) * 100),
+          highlights: (verdict.evidence || []).map(item => item.claim),
+          duration: TOTAL_DURATION, filename: options.fileName, text: options.text,
+          live: true,
+        };
+        setResult(liveResult); setIsScanning(false); setPhase(null); stream.close();
+      });
+    } catch {
+      // A local fallback preserves offline usability if the API is unavailable.
+    }
 
     // Progress animation
     const startTime = Date.now();
@@ -91,11 +118,13 @@ export function useScanner() {
       clearInterval(progressInterval);
       if (!cancelRef.current) {
         setProgress(100);
+        if (cancelRef.current) return;
         const scanResult = getRandomResult(type, forceVerdict);
         scanResult.timestamp = new Date().toISOString();
         if (fileName) scanResult.filename = fileName;
         if (text) scanResult.text = text;
-        setResult(scanResult);
+        // Only use seeded fallback if the live SSE verdict has not arrived yet.
+        setResult(previous => previous || scanResult);
         setIsScanning(false);
         setPhase(null);
       }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, Sun, Moon, Volume2, VolumeX, Home, Newspaper, Map, User } from 'lucide-react';
+import { Shield, Volume2, VolumeX, Home, Newspaper, Map, User } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useTranslation } from '../../hooks/useTranslation';
 
@@ -13,7 +13,7 @@ const NAV_KEYS = [
 
 export default function Navbar() {
   const location = useLocation();
-  const { isMuted, toggleMute, theme, toggleTheme, language, toggleLanguage } = useApp();
+  const { isMuted, toggleMute } = useApp();
   const { t } = useTranslation();
   const [scrolled, setScrolled] = useState(false);
 
@@ -84,36 +84,6 @@ export default function Navbar() {
 
           {/* Right section */}
           <div className="flex items-center gap-2">
-            {/* Language toggle */}
-            <button
-              onClick={toggleLanguage}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 hover:scale-105"
-              style={{
-                background: 'var(--accent-dim)',
-                border: '1px solid var(--accent-border)',
-                color: 'var(--accent)',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-mono)',
-                letterSpacing: '0.5px',
-              }}
-              title="English interface"
-            >
-              EN
-            </button>
-
-            {/* Theme toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {theme === 'dark'
-                ? <Sun size={18} style={{ color: 'var(--text-secondary)' }} />
-                : <Moon size={18} style={{ color: 'var(--text-secondary)' }} />
-              }
-            </button>
-
             {/* Mute toggle */}
             <button
               onClick={toggleMute}
@@ -162,31 +132,6 @@ export default function Navbar() {
 
           {/* Right controls */}
           <div className="flex items-center gap-1.5">
-            <button
-              onClick={toggleLanguage}
-              className="px-2 py-1 rounded-md text-[10px] font-bold"
-              style={{
-                background: 'var(--accent-dim)',
-                border: '1px solid var(--accent-border)',
-                color: 'var(--accent)',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-mono)',
-              }}
-            >
-              EN
-            </button>
-
-            <button
-              onClick={toggleTheme}
-              className="p-1.5 rounded-md"
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-            >
-              {theme === 'dark'
-                ? <Sun size={16} style={{ color: 'var(--text-secondary)' }} />
-                : <Moon size={16} style={{ color: 'var(--text-secondary)' }} />
-              }
-            </button>
-
             <button
               onClick={toggleMute}
               className="p-1.5 rounded-md"

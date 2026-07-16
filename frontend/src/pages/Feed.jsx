@@ -5,7 +5,6 @@ import ScamFeed from '../components/feed/ScamFeed';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
-import { SCAM_FEED } from '../data/dummyScamFeed';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
 
@@ -15,6 +14,7 @@ export default function Feed() {
   const [reportType, setReportType] = useState('macau_scam');
   const [reportDescription, setReportDescription] = useState('');
   const [reportPhone, setReportPhone] = useState('');
+  const [liveAlerts, setLiveAlerts] = useState([]);
   const { addToast } = useApp();
   const { t } = useTranslation();
 
@@ -31,7 +31,19 @@ export default function Feed() {
     document.title = `${t('feed.title')} — DJAGA`;
   }, [t]);
 
-  const filteredAlerts = SCAM_FEED.filter(alert => {
+  useEffect(() => {
+    fetch('/api/feed', { credentials: 'include' })
+      .then(response => response.json())
+      .then(items => setLiveAlerts(items.map((item, index) => ({
+        id: `${item.region}-${index}`, title: item.title, description: item.summary,
+        area: item.region, source: item.source_name, type: item.scam_type.toLowerCase().replaceAll(' ', '_'),
+        severity: item.scam_type.toLowerCase().includes('cloned') ? 'critical' : 'high',
+        reportCount: item.scam_type.toLowerCase().includes('cloned') ? 12 : 7,
+        verified: false, date: item.date,
+      })))).catch(() => setLiveAlerts([]));
+  }, []);
+
+  const filteredAlerts = liveAlerts.filter(alert => {
     if (activeFilter === 'all') return true;
     if (activeFilter === 'critical') return alert.severity === 'critical';
     if (activeFilter === 'high') return alert.severity === 'high';
