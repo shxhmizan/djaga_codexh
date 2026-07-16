@@ -30,6 +30,9 @@ def test_auth_feed_and_mock_pipeline():
    time.sleep(.02)
   assert verdict['level']=='danger'
   assert len(verdict['evidence'])>=2
+  osint_dashboard=client.get('/api/osint/dashboard')
+  assert osint_dashboard.status_code==200
+  assert any(event['agent']=='osint' for event in osint_dashboard.json()['logs'])
 def test_demo_stream_is_public():
  with TestClient(app) as client:
   assert client.get('/healthz').json()['langgraph'] is True

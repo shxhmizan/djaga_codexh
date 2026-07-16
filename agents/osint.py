@@ -48,10 +48,11 @@ class OSINTAgent:
             return await mock_agents.osint(text=text)
         if not entities:
             return AgentResult(agent="osint", score=0.08, payload={"entities": [], "mentions": 0, "sources": [], "claim": "No named entity was available for a focused live-web scam search."})
-        batches = await asyncio.gather(*(search(f'"{entity}" Malaysia scam', num_results=4) for entity in entities))
+        queries = [f'"{entity}" Malaysia scam' for entity in entities]
+        batches = await asyncio.gather(*(search(query, num_results=4) for query in queries))
         results = [item for batch in batches for item in batch]
         scam_results = [item for item in results if _is_scam_result(item)]
         mentions = len(scam_results)
         sources = [{"title": item.get("title", "Public web report"), "url": item.get("url", ""), "published_date": item.get("publishedDate")} for item in scam_results[:5]]
         score = min(0.95, 0.12 + mentions * 0.16) if results else 0.08
-        return AgentResult(agent="osint", score=round(score, 3), payload={"entities": entities, "mentions": mentions, "sources": sources, "provider": "exa", "claim": f"Exa found {mentions} scam-related public web report{'s' if mentions != 1 else ''} for {', '.join(entities)}."})
+        return AgentResult(agent="osint", score=round(score, 3), payload={"entities": entities, "queries": queries, "mentions": mentions, "sources": sources, "provider": "exa", "claim": f"Exa found {mentions} scam-related public web report{'s' if mentions != 1 else ''} for {', '.join(entities)}."})
