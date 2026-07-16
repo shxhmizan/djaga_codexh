@@ -1,6 +1,9 @@
 import os
 os.environ['DJAGA_DB_PATH']='/tmp/djaga-test.db'
 os.environ['MOCK_DELAY_SCALE']='0'
+# Tests must remain self-contained even when a developer has configured a
+# Supabase connection in their local .env file.
+os.environ['SUPABASE_DB_URL']=''
 from fastapi.testclient import TestClient
 from app import app
 def test_auth_feed_and_mock_pipeline():
