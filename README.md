@@ -18,4 +18,4 @@ Verify the connection without exposing credentials: `python3 scripts/test_supaba
 
 ## Deploy to Render
 
-This repository includes `render.yaml` and a multi-stage `Dockerfile`. Push it to GitHub, then in Render select **New → Blueprint**, choose the repository, and create the `djaga` service. In its **Environment** settings, add `SUPABASE_DB_URL` and any live-service keys you use. Render builds the frontend and starts FastAPI on its required `PORT`; the health check is `/healthz`.
+This repository includes `render.yaml` for a Render Python web service. Push it to GitHub, then in Render select **New → Blueprint**, choose the repository, and create the `djaga` service. In its **Environment** settings, add `SUPABASE_DB_URL` and any live-service keys you use. Render runs `pip install -r requirements.txt && cd frontend && npm ci && npm run build`, then starts FastAPI on its required `PORT`; the health check is `/healthz`.
