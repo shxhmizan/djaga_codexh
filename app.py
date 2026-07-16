@@ -16,7 +16,7 @@ from assistant.chat import stream_reply
 from auth import current_user, login, logout, mydigital_login, register
 from config import settings
 from contracts import FeedItem, User, Verdict
-from db import create_check as db_create_check, get_check, get_feed, get_intelligence, get_verdict, init_db, list_checks, save_community_report, save_verdict, set_language, upsert_feed
+from db import create_check as db_create_check, get_check, get_feed, get_intelligence, get_verdict, init_db, list_checks, save_community_report, save_verdict, set_language, top_identifier_match, upsert_feed
 from jobs.harvester import harvest
 from pipeline import manager
 from report_analyzer import analyze_report, coordinates_for
@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "frontend" / "dist"
 
 app = FastAPI(title="DJAGA", version="1.0.0")
+IDENTIFIER_JOBS: dict[str, dict] = {}
 if (DIST / "assets").exists():
     app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
 
@@ -227,11 +228,12 @@ def submit_community_report(payload: dict, djaga_session: str | None = Cookie(No
     return {"id": report_id, "analysis": analysis, "status": "community_unverified", "published": consent_public}
 
 
-@app.post("/api/scam-check/identifier")
-def check_identifier(payload: dict, djaga_session: str | None = Cookie(None)):
-    """Checks an identifier against the mock registry and the live DJAGA feed."""
-    user = require_user(djaga_session)
-    value = str(payload.get("value", "")).strip()
+def _identifier_result(user: User, value: str, log=None) -> dict:
+    """Run actual local identifier lookups and produce an auditable verdict."""
+    def emit(message: str, status: str = "evidence"):
+        if log:
+            log(message, status)
+    value = value.strip()
     if not value or len(value) > 500:
         raise HTTPException(422, "Enter a phone number, bank account, or link to check.")
     digits = re.sub(r"\D", "", value)
@@ -243,21 +245,81 @@ def check_identifier(payload: dict, djaga_session: str | None = Cookie(None)):
         kind = "bank_account"
     else:
         raise HTTPException(422, "That does not look like a phone number, bank account, or web link.")
+    emit(f"Normalised the submitted {kind.replace('_', ' ')}.", "started")
+    top_match = top_identifier_match(kind, value) if kind in {"phone", "bank_account"} else None
+    if top_match:
+        emit(f"Database match: identifier appears in DJAGA’s Top 10 {top_match['dataset'].replace('_', ' ')} data with {top_match['reports']} reports.")
+    elif kind in {"phone", "bank_account"}:
+        emit("Queried DJAGA’s persisted Top 10 identifier records; no exact match found.")
     registry = semakmule_lookup(value)
+    emit("Queried the SemakMule adapter (MOCK — not a confirmed risk source).")
     matches = [item for item in get_feed(limit=100) if value.lower() in (item["title"] + item["summary"]).lower()]
-    report_count = int(registry.get("report_count", 0)) + len(matches)
-    risk = 0.78 if report_count else 0.18
+    emit(f"Searched persisted DJAGA feed data; found {len(matches)} direct identifier mention(s).")
+    report_count = int(top_match["reports"]) if top_match else len(matches)
+    risk = min(0.98, 0.82 + min(report_count, 20) * 0.008) if top_match else 0.72 if matches else 0.18
     level = "danger" if risk >= settings.danger_threshold else "safe"
-    label = {"phone": "phone number", "link": "web link", "bank_account": "bank account"}[kind]
-    evidence = [
-        {"agent": "registry", "claim": f"SemakMule MOCK returned {registry.get('report_count', 0)} seeded report(s) for this {label}.", "weight_contribution": 0.75},
-        {"agent": "osint", "claim": f"DJAGA feed found {len(matches)} matching intelligence alert(s).", "weight_contribution": 0.25},
+    evidence = []
+    if top_match:
+        evidence.append({"agent": "registry", "claim": f"Exact Top 10 database match: {top_match['identifier']} has {top_match['reports']} recorded reports.", "weight_contribution": 0.85, "source": "djaga_database"})
+    evidence += [
+        {"agent": "registry", "claim": "SemakMule MOCK is shown for interface transparency only; no official portal was queried.", "weight_contribution": 0.0, "mock": True},
+        {"agent": "osint", "claim": f"DJAGA feed found {len(matches)} direct identifier match(es).", "weight_contribution": 0.15 if top_match else 1.0},
     ]
     check_id = str(uuid.uuid4())
     db_create_check(check_id, user.id, "message")
     verdict = Verdict(risk=risk, level=level, kind="message", evidence=evidence, excerpt=f"Identifier check: {kind}", flagged_phrases=[])
     save_verdict(check_id, verdict)
-    return {"check_id": check_id, "kind": kind, "risk": risk, "level": level, "registry": registry, "feed_matches": matches[:3], "evidence": evidence}
+    emit("Finalised the database-backed identifier risk verdict.", "done")
+    return {"check_id": check_id, "kind": kind, "risk": risk, "level": level, "registry": registry, "top_match": top_match, "feed_matches": matches[:3], "evidence": evidence}
+
+
+@app.post("/api/scam-check/identifier")
+def check_identifier(payload: dict, djaga_session: str | None = Cookie(None)):
+    return _identifier_result(require_user(djaga_session), str(payload.get("value", "")))
+
+
+async def _run_identifier_job(job_id: str, user: User, value: str) -> None:
+    job = IDENTIFIER_JOBS[job_id]
+    def log(message: str, status: str = "evidence"):
+        job["events"].append({"type": "trace", "agent": "registry", "ts": time.time(), "status": status, "message": message})
+    try:
+        job["result"] = _identifier_result(user, value, log)
+    except Exception as exc:
+        job["error"] = str(exc)
+        log("Identifier check could not complete.", "error")
+    finally:
+        job["complete"] = True
+
+
+@app.post("/api/scam-check/identifier/start")
+async def start_identifier_check(payload: dict, djaga_session: str | None = Cookie(None)):
+    user = require_user(djaga_session)
+    job_id = str(uuid.uuid4())
+    IDENTIFIER_JOBS[job_id] = {"user_id": user.id, "events": [], "complete": False, "result": None, "error": None}
+    asyncio.create_task(_run_identifier_job(job_id, user, str(payload.get("value", ""))))
+    return {"job_id": job_id}
+
+
+@app.get("/api/scam-check/identifier/{job_id}/stream")
+async def identifier_check_stream(job_id: str, djaga_session: str | None = Cookie(None)):
+    user = require_user(djaga_session)
+    job = IDENTIFIER_JOBS.get(job_id)
+    if not job or job["user_id"] != user.id:
+        raise HTTPException(404, "Identifier check not found")
+    async def generate():
+        cursor = 0
+        while True:
+            for event in job["events"][cursor:]:
+                cursor += 1
+                yield f"event: trace\ndata: {json.dumps(event)}\n\n"
+            if job["complete"]:
+                if job["result"]:
+                    yield f"event: result\ndata: {json.dumps(job['result'])}\n\n"
+                elif job["error"]:
+                    yield f"event: error\ndata: {json.dumps({'detail': job['error']})}\n\n"
+                break
+            await asyncio.sleep(.1)
+    return StreamingResponse(generate(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @app.post("/api/chat")

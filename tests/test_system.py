@@ -22,6 +22,9 @@ def test_auth_feed_and_mock_pipeline():
   assert report.status_code == 200 and report.json()['published'] is True
   identifier=client.post('/api/scam-check/identifier', json={'value': '0123456789'})
   assert identifier.status_code == 200 and identifier.json()['kind'] == 'phone'
+  known_identifier=client.post('/api/scam-check/identifier', json={'value': '0104269914'})
+  assert known_identifier.status_code == 200
+  assert known_identifier.json()['level'] == 'danger' and known_identifier.json()['top_match']['reports'] == 21
   started=client.post('/api/checks',json={'kind':'message'});assert started.status_code==200
   sid=started.json()['session_id'];assert client.post(f'/api/checks/{sid}/analyze',json={'text':'Transfer now'}).status_code==200
   import time

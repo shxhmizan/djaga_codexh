@@ -219,6 +219,19 @@ def get_intelligence(kind: str) -> list[dict[str, Any]]:
     return [row["payload"] if isinstance(row["payload"], dict) else json.loads(row["payload"]) for row in rows]
 
 
+def top_identifier_match(kind: str, value: str) -> dict[str, Any] | None:
+    """Find an exact phone/account hit in persisted Top 10 intelligence."""
+    digits = re.sub(r"\D", "", value)
+    if kind == "phone" and digits.startswith("60"):
+        digits = "0" + digits[2:]
+    record_kind = "top_phones" if kind == "phone" else "top_accounts"
+    for record in get_intelligence(record_kind):
+        candidate = re.sub(r"\D", "", str(record.get("identifier", "")))
+        if candidate and candidate == digits:
+            return {"identifier": str(record["identifier"]), "reports": int(record.get("reports", 0)), "dataset": record_kind}
+    return None
+
+
 def intelligence_count() -> int:
     with connection() as con:
         row = con.execute("SELECT COUNT(*) AS total FROM intelligence_records").fetchone()
