@@ -5,10 +5,12 @@ Usage: SUPABASE_DB_URL='postgresql://...' python3 scripts/migrate_sqlite_to_supa
 from __future__ import annotations
 import os, sqlite3, sys
 from pathlib import Path
+from dotenv import load_dotenv
 import psycopg
 from psycopg.rows import dict_row
 
 ROOT=Path(__file__).resolve().parents[1]
+load_dotenv(ROOT / '.env')
 SOURCE=Path(os.getenv('DJAGA_SQLITE_SOURCE', ROOT/'djaga.db'))
 TARGET=os.getenv('SUPABASE_DB_URL') or os.getenv('DATABASE_URL')
 if not TARGET:

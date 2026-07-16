@@ -3,12 +3,10 @@ from __future__ import annotations
 import hashlib
 import secrets
 import uuid
-import httpx
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 from contracts import User
-from db import create_user, delete_session, save_session, session_user, user_by_email, upsert_oauth_user
-from config import settings
+from db import create_user, delete_session, save_session, session_user, user_by_email
 
 COOKIE="djaga_session"
 def _hash(password:str,salt:str|None=None)->str:
@@ -46,15 +44,3 @@ def current_user(raw_token:str|None)->User|None:
 def logout(raw_token:str|None):
     if raw_token:delete_session(hashlib.sha256(raw_token.encode()).hexdigest())
     response=JSONResponse({"ok":True});response.delete_cookie(COOKIE);return response
-
-def supabase_google_login(access_token: str):
-    """Validate a Supabase-issued OAuth token server-side, then issue DJAGA's httpOnly cookie."""
-    if not settings.supabase_url or not settings.supabase_publishable_key:
-        raise HTTPException(503,"Supabase Auth is not configured")
-    response=httpx.get(f"{settings.supabase_url.rstrip('/')}/auth/v1/user",headers={"apikey":settings.supabase_publishable_key,"Authorization":f"Bearer {access_token}"},timeout=15)
-    if response.status_code != 200: raise HTTPException(401,"Google sign-in could not be verified")
-    profile=response.json();email=profile.get('email')
-    if not email:raise HTTPException(401,"Google account has no verified email")
-    metadata=profile.get('user_metadata') or {}
-    user=User(id=str(profile['id']),email=email,name=metadata.get('full_name') or metadata.get('name') or email.split('@')[0],auth_method='google')
-    return _reply(upsert_oauth_user(user))

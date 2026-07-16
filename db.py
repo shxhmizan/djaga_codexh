@@ -59,14 +59,6 @@ def create_user(user: User, password_hash: str) -> None:
     with connection() as con:
         con.execute("INSERT INTO users (id,email,password_hash,name,language,auth_method) VALUES (?,?,?,?,?,?)", (user.id,user.email,password_hash,user.name,user.language,user.auth_method))
 
-def upsert_oauth_user(user: User) -> User:
-    with connection() as con:
-        if IS_POSTGRES:
-            con.execute("INSERT INTO users (id,email,password_hash,name,language,auth_method) VALUES (?,?,?,?,?,?) ON CONFLICT (email) DO UPDATE SET name=EXCLUDED.name,auth_method=EXCLUDED.auth_method",(user.id,user.email,"oauth",user.name,user.language,user.auth_method))
-        else:
-            con.execute("INSERT INTO users (id,email,password_hash,name,language,auth_method) VALUES (?,?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET name=excluded.name,auth_method=excluded.auth_method",(user.id,user.email,"oauth",user.name,user.language,user.auth_method))
-    found=user_by_email(user.email)
-    return found[0] if found else user
 
 def user_by_email(email: str) -> tuple[User, str] | None:
     with connection() as con:

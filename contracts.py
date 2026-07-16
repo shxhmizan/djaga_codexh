@@ -41,4 +41,4 @@ class User(BaseModel):
     email: str
     name: str
     language: Literal["ms", "en", "zh", "ta"] = "en"
-    auth_method: Literal["password", "mydigitalid_sim", "google"] = "password"
+    auth_method: Literal["password", "mydigitalid_sim"] = "password"

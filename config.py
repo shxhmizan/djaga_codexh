@@ -13,8 +13,6 @@ class Settings:
     db_path: Path = Path(os.getenv("DJAGA_DB_PATH", Path(__file__).with_name("djaga.db")))
     # Supabase exposes managed PostgreSQL. Prefer its pooled connection string in production.
     database_url: str = (lambda value: "" if "YOUR_PERCENT_ENCODED_PASSWORD" in value else value)(os.getenv("SUPABASE_DB_URL", os.getenv("DATABASE_URL", "")))
-    supabase_url: str = os.getenv("SUPABASE_URL", "")
-    supabase_publishable_key: str = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
     session_secret: str = os.getenv("SESSION_SECRET", "development-only-change-me")
     agent_mode: str = os.getenv("AGENT_MODE", "mock").lower()
     behavioral_mode: str = os.getenv("BEHAVIORAL_MODE", "fewshot")

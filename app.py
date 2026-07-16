@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from assistant.chat import stream_reply
-from auth import current_user, login, logout, mydigital_login, register, supabase_google_login
+from auth import current_user, login, logout, mydigital_login, register
 from config import settings
 from contracts import User
 from db import get_check, get_feed, get_verdict, init_db, list_checks, set_language
@@ -53,10 +53,6 @@ def api_login(payload: dict):
 @app.post("/api/auth/mydigitalid")
 def api_mydigital():
     return mydigital_login()
-
-@app.post("/api/auth/supabase")
-def api_supabase_auth(payload: dict):
-    return supabase_google_login(str(payload.get("access_token", "")))
 
 
 @app.post("/api/auth/logout")

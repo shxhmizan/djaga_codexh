@@ -10,11 +10,13 @@ import VoiceScan from './pages/VoiceScan';
 import Profile from './pages/Profile';
 import Feed from './pages/Feed';
 import MapPage from './pages/MapPage';
+import Login from './pages/Login';
+import Chat from './pages/Chat';
 import NotFound from './pages/NotFound';
 import { useApp } from './context/AppContext';
 
 function App() {
-  const { toasts, removeToast } = useApp();
+  const { toasts, removeToast, user, authLoading } = useApp();
   const [showSplash, setShowSplash] = useState(true);
 
   const handleSplashComplete = useCallback(() => {
@@ -24,6 +26,9 @@ function App() {
   if (showSplash) {
     return <SplashScreen onComplete={handleSplashComplete} />;
   }
+
+  if (authLoading) return <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }} />;
+  if (!user) return <Login />;
 
   return (
     <div className="min-h-screen app-shell" style={{ background: 'var(--bg-primary)' }}>
@@ -44,6 +49,7 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/feed" element={<Feed />} />
           <Route path="/map" element={<MapPage />} />
+          <Route path="/chat" element={<Chat />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
