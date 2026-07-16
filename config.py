@@ -18,6 +18,8 @@ class Settings:
     behavioral_mode: str = os.getenv("BEHAVIORAL_MODE", "fewshot")
     serving_endpoint: str = os.getenv("SERVING_ENDPOINT", "")
     chat_endpoint: str = os.getenv("CHAT_ENDPOINT", "")
+    openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
+    openrouter_model: str = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
     vs_endpoint: str = os.getenv("VS_ENDPOINT", "")
     vs_index: str = os.getenv("VS_INDEX", "")
     elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "")

@@ -11,15 +11,15 @@ import ScamHeatmap from '../components/map/ScamHeatmap';
 
 export default function Feed() {
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportType, setReportType] = useState('macau_scam');
+  const [reportType, setReportType] = useState('unsure');
   const [reportDescription, setReportDescription] = useState('');
   const [reportPhone, setReportPhone] = useState('');
   const [reportLocation, setReportLocation] = useState('');
   const [occurredWhen, setOccurredWhen] = useState('today');
   const [consentPublic, setConsentPublic] = useState(false);
   const [analysis, setAnalysis] = useState(null);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [reportError, setReportError] = useState('');
-  const [analysing, setAnalysing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [feedRefreshKey, setFeedRefreshKey] = useState(0);
   const [liveAlerts, setLiveAlerts] = useState([]);
@@ -51,24 +51,14 @@ export default function Feed() {
     setOccurredWhen('today'); setConsentPublic(false); setAnalysis(null); setReportError('');
   };
 
-  const handleAnalyzeReport = async () => {
-    setReportError(''); setAnalysing(true);
-    try {
-      const response = await fetch('/api/reports/analyze', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: reportDescription, submitted_type: reportType === 'unsure' ? null : reportType, phone_link: reportPhone }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.detail || 'Unable to analyse this report.');
-      setAnalysis(result);
-    } catch (error) { setReportError(error.message); } finally { setAnalysing(false); }
-  };
-
   const handleSubmitReport = async () => {
-    if (!analysis) return handleAnalyzeReport();
     setReportError(''); setSubmitting(true);
     try {
       const response = await fetch('/api/reports', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: reportDescription, submitted_type: reportType === 'unsure' ? null : reportType, phone_link: reportPhone, location: reportLocation, occurred_when: occurredWhen, consent_public: consentPublic }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.detail || 'Unable to submit this report.');
-      loadFeed(); setFeedRefreshKey(key => key + 1); resetReport();
+      loadFeed(); setFeedRefreshKey(key => key + 1); setAnalysis(result.analysis); setShowReportModal(false); setShowAnalysisModal(true);
+      setReportDescription(''); setReportPhone(''); setReportLocation(''); setOccurredWhen('today'); setConsentPublic(false); setReportType('unsure');
       addToast({ type: 'success', title: 'Report saved', message: result.published ? 'Added to the community intelligence feed as unverified.' : 'Saved privately to your account.' });
     } catch (error) { setReportError(error.message); } finally { setSubmitting(false); }
   };
@@ -182,12 +172,6 @@ export default function Feed() {
               </select>
             </div>
 
-            {analysis && <div className="rounded-xl p-4" style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)' }}>
-              <div className="flex items-center gap-2 mb-2" style={{ color: 'var(--accent)' }}><Sparkles size={16}/><span className="text-xs font-semibold uppercase tracking-wide">DJAGA analysis</span></div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{analysis.title}</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Classified with {Math.round(analysis.confidence * 100)}% confidence. You can still correct the scam type above.</p>
-            </div>}
-
             <label className="flex items-start gap-3 text-xs leading-relaxed cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
               <input type="checkbox" checked={consentPublic} onChange={(e) => setConsentPublic(e.target.checked)} className="mt-0.5" style={{ accentColor: 'var(--accent)' }} />
               <span>I understand this report may appear anonymously in DJAGA’s community intelligence feed after AI classification. It will be labelled as unverified.</span>
@@ -200,12 +184,25 @@ export default function Feed() {
               fullWidth
               size="lg"
               onClick={handleSubmitReport}
-              loading={analysing || submitting}
+              loading={submitting}
               disabled={reportDescription.trim().length < 12 || !consentPublic}
             >
-              {analysis ? 'Submit community report' : 'Analyse report'}
+              Submit community report
             </Button>
           </div>
+        </Modal>
+
+        <Modal isOpen={showAnalysisModal} onClose={() => setShowAnalysisModal(false)} title="DJAGA analysis">
+          {analysis && <div className="space-y-5">
+            <div className="rounded-2xl p-5" style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)' }}>
+              <div className="flex items-center gap-2 mb-3" style={{ color: 'var(--accent)' }}><Sparkles size={18}/><span className="text-xs font-semibold uppercase tracking-wide">{analysis.mode === 'openrouter' ? 'OpenRouter AI classification' : 'DJAGA AI classification'}</span></div>
+              <h4 className="text-lg font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>{analysis.title}</h4>
+              <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{analysis.explanation || 'DJAGA found language and indicators commonly associated with this scam type.'}</p>
+            </div>
+            <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}><span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Classification confidence</span><strong style={{ color: 'var(--accent)' }}>{Math.round(analysis.confidence * 100)}%</strong></div>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>Your report was saved and added to the community intelligence feed as unverified. Sensitive identifiers are redacted before public display.</p>
+            <Button fullWidth onClick={() => setShowAnalysisModal(false)}>Done</Button>
+          </div>}
         </Modal>
       </div>
     </PageWrapper>
