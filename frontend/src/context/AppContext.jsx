@@ -5,7 +5,7 @@ import { SCAN_HISTORY } from '../data/dummyScans';
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  const [user] = useState(CURRENT_USER);
+  const [user, setUser] = useState(CURRENT_USER);
   const [scanHistory, setScanHistory] = useState(SCAN_HISTORY);
   const [toasts, setToasts] = useState([]);
   const [isMuted, setIsMuted] = useState(() => {
@@ -15,6 +15,18 @@ export function AppProvider({ children }) {
       return false;
     }
   });
+
+  // The supplied UI has no sign-in screen. Establish its clearly simulated demo
+  // identity once so every protected backend endpoint is exercised in local mode.
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(r => r.json())
+      .then(async ({ user: existing }) => {
+        if (existing) return setUser(existing);
+        const response = await fetch('/api/auth/mydigitalid', { method: 'POST', credentials: 'include' });
+        if (response.ok) setUser((await response.json()).user);
+      }).catch(() => {});
+  }, []);
 
   // Theme: 'dark' or 'light'
   const [theme, setTheme] = useState(() => {

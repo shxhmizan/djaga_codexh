@@ -1,68 +1,211 @@
-import asyncio,json,sqlite3,uuid,time,hashlib
+"""DJAGA FastAPI application: API routers plus production SPA hosting."""
+from __future__ import annotations
+
+import asyncio
+import json
+import time
 from pathlib import Path
-from fastapi import FastAPI,Body,Cookie,HTTPException
-from fastapi.responses import JSONResponse,StreamingResponse,FileResponse
+
+from fastapi import Cookie, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-ROOT=Path(__file__).parent; DB=ROOT/'djaga.db'; S={}; TOK={}
-FEED=[{'scam_type':'Cloned voice','title':'Family emergency transfer calls','summary':'12 reports match cloned family voices demanding urgent transfers.','region':'Ipoh','lat':4.5975,'lng':101.0901,'source_name':'NACSA','source_url':'https://www.nacsa.gov.my','date':'2026-01-01'},{'scam_type':'Macau','title':'Fake officer calls','summary':'Callers pressure victims to act immediately.','region':'Kuala Lumpur','lat':3.139,'lng':101.6869,'source_name':'PDRM','source_url':'https://www.rmp.gov.my','date':'2026-01-01'},{'scam_type':'Investment','title':'Investment scheme alert','summary':'WhatsApp investment promises reported in Perak.','region':'Manjung','lat':4.21,'lng':100.65,'source_name':'Bernama','source_url':'https://bernama.com','date':'2026-01-01'}]
-def con():
- c=sqlite3.connect(DB);c.row_factory=sqlite3.Row;c.execute('create table if not exists users(id text primary key,email text unique,password text,name text,language text)');return c
-app=FastAPI(); app.mount('/assets',StaticFiles(directory=ROOT/'frontend/dist/assets',check_dir=False),name='assets')
-def user(t):
- if not t or t not in TOK:return None
- with con() as c:r=c.execute('select id,email,name,language from users where id=?',(TOK[t],)).fetchone()
- return dict(r) if r else None
-def reply(u):
- t=str(uuid.uuid4());TOK[t]=u['id'];r=JSONResponse({'user':u});r.set_cookie('djaga_session',t,httponly=True,samesite='lax');return r
-@app.post('/api/auth/register')
-def reg(p:dict=Body(...)):
- u={'id':str(uuid.uuid4()),'email':p['email'],'name':p.get('name') or p['email'].split('@')[0],'language':'en'}
- try:
-  with con() as c:c.execute('insert into users values(?,?,?,?,?)',(u['id'],u['email'],hashlib.sha256(p['password'].encode()).hexdigest(),u['name'],'en'))
- except: raise HTTPException(409,'Email already registered')
- return reply(u)
-@app.post('/api/auth/login')
-def login(p:dict=Body(...)):
- with con() as c:r=c.execute('select * from users where email=?',(p['email'],)).fetchone()
- if not r or r['password']!=hashlib.sha256(p['password'].encode()).hexdigest():raise HTTPException(401,'Invalid login')
- return reply(dict(r))
-@app.post('/api/auth/mydigitalid')
-def myid():
- u={'id':'mydigital','email':'verified@mydigital.demo','name':'Verified Malaysian','language':'en'}
- with con() as c:c.execute('insert or ignore into users values(?,?,?,?,?)',(u['id'],u['email'],'simulated',u['name'],'en'))
- return reply(u)
-@app.get('/api/auth/me')
-def me(djaga_session:str|None=Cookie(None)):return {'user':user(djaga_session)}
-@app.post('/api/auth/logout')
-def logout(djaga_session:str|None=Cookie(None)):
- TOK.pop(djaga_session,None);r=JSONResponse({'ok':True});r.delete_cookie('djaga_session');return r
-@app.post('/api/profile/language')
-def lang(p:dict=Body(...),djaga_session:str|None=Cookie(None)):
- u=user(djaga_session)
- if not u:raise HTTPException(401)
- with con() as c:c.execute('update users set language=? where id=?',(p['language'],u['id']))
- return {'language':p['language']}
-@app.get('/api/feed')
-def feed():return FEED
-@app.post('/api/checks')
-async def check(p:dict=Body(...)):
- i=str(uuid.uuid4());S[i]={'events':[],'verdict':None};asyncio.create_task(run(i,p.get('kind','call')));return {'session_id':i}
-async def run(i,k):
- e=S[i]['events'];
- async def add(a,m,s=None):e.append({'type':'trace','agent':a,'ts':time.time(),'status':'evidence','message':m,'score':s})
- await add('intake','Audio received. Dispatching the investigation team.');await asyncio.sleep(3);await add('forensics','Synthetic voice artifacts detected.',.81);e.append({'type':'risk','agent':'forensics','ts':time.time(),'status':'evidence','message':'Risk rising','score':.42});await asyncio.sleep(5);await add('transcribe','Transcript: Please do not tell anyone. Transfer RM3,000 now.');await add('behavioral','Urgency, secrecy and payment pressure detected.',.86);e.append({'type':'risk','agent':'behavioral','ts':time.time(),'status':'evidence','message':'Caution','score':.68});await asyncio.sleep(5);await add('registry','3 related SemakMule reports (MOCK).',.55);await add('osint','7 online scam reports match this script.',.78);v={'risk':.77,'level':'danger','kind':k,'excerpt':'Please do not tell anyone. Transfer RM3,000 now.','flagged_phrases':['do not tell anyone','Transfer RM3,000 now.'],'evidence':[{'agent':'forensics','claim':'Cloned voice detected','weight_contribution':.2},{'agent':'behavioral','claim':'Urgency + secrecy pattern','weight_contribution':.3},{'agent':'registry','claim':'3 SemakMule reports (MOCK)','weight_contribution':.11},{'agent':'osint','claim':'7 matching reports','weight_contribution':.16}]};S[i]['verdict']=v;await add('verdict','This call may be a scam.',.77);e.append({'type':'risk','agent':'verdict','ts':time.time(),'status':'done','message':'Danger','score':.77,'evidence':v})
-@app.get('/api/checks/{i}/stream')
-async def stream(i:str):
- async def g():
-  n=0
-  while i in S:
-   while n<len(S[i]['events']):x=S[i]['events'][n];n+=1;yield f"event: {x['type']}\ndata: {json.dumps(x)}\n\n"
-   if S[i]['verdict']:break
-   await asyncio.sleep(.5)
- return StreamingResponse(g(),media_type='text/event-stream')
-@app.get('/api/checks/{i}/verdict')
-def verdict(i:str):return S.get(i,{}).get('verdict') or {}
-@app.get('/healthz')
-def health():return {'ok':True,'agents':{x:'mock' for x in ['intake','forensics','transcribe','behavioral','registry','osint','verdict']}}
-@app.get('/{path:path}')
-def spa(path:str):return FileResponse(ROOT/'frontend/dist/index.html')
+
+from assistant.chat import stream_reply
+from auth import current_user, login, logout, mydigital_login, register, supabase_google_login
+from config import settings
+from contracts import User
+from db import get_check, get_feed, get_verdict, init_db, list_checks, set_language
+from jobs.harvester import harvest
+from pipeline import manager
+
+ROOT = Path(__file__).resolve().parent
+DIST = ROOT / "frontend" / "dist"
+
+app = FastAPI(title="DJAGA", version="1.0.0")
+if (DIST / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
+
+
+@app.on_event("startup")
+async def startup() -> None:
+    init_db()
+    # Seed data is part of a usable zero-key installation, not an API-response mock.
+    harvest(seed_only=True)
+
+
+def require_user(token: str | None) -> User:
+    user = current_user(token)
+    if not user:
+        raise HTTPException(401, "Please sign in to continue")
+    return user
+
+
+@app.post("/api/auth/register")
+def api_register(payload: dict):
+    return register(payload)
+
+
+@app.post("/api/auth/login")
+def api_login(payload: dict):
+    return login(payload)
+
+
+@app.post("/api/auth/mydigitalid")
+def api_mydigital():
+    return mydigital_login()
+
+@app.post("/api/auth/supabase")
+def api_supabase_auth(payload: dict):
+    return supabase_google_login(str(payload.get("access_token", "")))
+
+
+@app.post("/api/auth/logout")
+def api_logout(djaga_session: str | None = Cookie(None)):
+    return logout(djaga_session)
+
+
+@app.get("/api/auth/me")
+def api_me(djaga_session: str | None = Cookie(None)):
+    return {"user": current_user(djaga_session)}
+
+
+@app.post("/api/profile/language")
+def api_language(payload: dict, djaga_session: str | None = Cookie(None)):
+    user = require_user(djaga_session)
+    language = payload.get("language", "en")
+    if language not in {"en", "ms", "zh", "ta"}:
+        raise HTTPException(422, "Unsupported language")
+    return {"user": set_language(user.id, language)}
+
+
+@app.post("/api/checks")
+async def create_check(payload: dict, djaga_session: str | None = Cookie(None)):
+    user = require_user(djaga_session)
+    kind = payload.get("kind", "call")
+    if kind not in {"call", "voice", "image", "message"}:
+        raise HTTPException(422, "Unsupported check kind")
+    session_id = await manager.create(user.id, kind)
+    return {"session_id": session_id, "kind": kind}
+
+
+@app.post("/api/checks/{session_id}/chunk")
+async def upload_chunk(session_id: str, audio: UploadFile = File(...), djaga_session: str | None = Cookie(None)):
+    user = require_user(djaga_session)
+    if audio.content_type not in {"audio/mp4", "audio/webm", "audio/wav", "audio/x-wav", "audio/mpeg"}:
+        raise HTTPException(415, "Use an audio/mp4, audio/webm, or audio/wav recording")
+    data = await audio.read()
+    await manager.add_chunk(session_id, user.id, data, audio.content_type or "audio/mp4")
+    return {"ok": True, "bytes_received": len(data)}
+
+
+@app.post("/api/checks/{session_id}/analyze")
+async def analyze_check(
+    session_id: str,
+    request: Request,
+    file: UploadFile | None = File(None),
+    text: str | None = Form(None),
+    djaga_session: str | None = Cookie(None),
+):
+    user = require_user(djaga_session)
+    # JSON text is useful for the message scanner; multipart supports uploads.
+    if request.headers.get("content-type", "").startswith("application/json"):
+        body = await request.json()
+        text = body.get("text", text)
+    data = await file.read() if file else None
+    await manager.analyze(session_id, user.id, text=text, blob=data, content_type=file.content_type if file else None)
+    return {"ok": True, "session_id": session_id}
+
+
+@app.get("/api/checks")
+def api_checks(djaga_session: str | None = Cookie(None)):
+    user = require_user(djaga_session)
+    return list_checks(user.id)
+
+
+@app.get("/api/checks/{session_id}/verdict")
+def api_verdict(session_id: str, djaga_session: str | None = Cookie(None)):
+    user = require_user(djaga_session)
+    check = get_check(session_id, user.id)
+    if not check:
+        raise HTTPException(404, "Check not found")
+    return get_verdict(session_id) or {}
+
+
+async def event_generator(session_id: str):
+    cursor = 0
+    last_beat = time.monotonic()
+    while True:
+        events, complete = await manager.events_since(session_id, cursor)
+        for event in events:
+            cursor += 1
+            yield f"event: {event.type}\ndata: {event.model_dump_json()}\n\n"
+        if complete and not events:
+            break
+        if time.monotonic() - last_beat >= 15:
+            yield ": heartbeat\n\n"
+            last_beat = time.monotonic()
+        await asyncio.sleep(0.35)
+
+
+@app.get("/api/checks/{session_id}/stream")
+async def check_stream(session_id: str, djaga_session: str | None = Cookie(None)):
+    user = require_user(djaga_session)
+    if not get_check(session_id, user.id):
+        raise HTTPException(404, "Check not found")
+    return StreamingResponse(event_generator(session_id), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/feed")
+def api_feed(type: str | None = None, limit: int = 60, djaga_session: str | None = Cookie(None)):
+    require_user(djaga_session)
+    return get_feed(type, min(max(limit, 1), 100))
+
+
+@app.post("/api/feed/refresh")
+async def refresh_feed(djaga_session: str | None = Cookie(None)):
+    require_user(djaga_session)
+    return await asyncio.to_thread(harvest)
+
+
+@app.post("/api/chat")
+async def chat(payload: dict, djaga_session: str | None = Cookie(None)):
+    user = require_user(djaga_session)
+    message = str(payload.get("message", "")).strip()
+    if not message:
+        raise HTTPException(422, "Message is required")
+    return StreamingResponse(stream_reply(user, message), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
+
+
+@app.post("/api/chat/speak")
+async def chat_speak(payload: dict, djaga_session: str | None = Cookie(None)):
+    require_user(djaga_session)
+    from integrations.elevenlabs_client import synthesize
+    return await synthesize(str(payload.get("text", "")))
+
+
+@app.post("/api/chat/listen")
+async def chat_listen(audio: UploadFile = File(...), djaga_session: str | None = Cookie(None)):
+    require_user(djaga_session)
+    from integrations.elevenlabs_client import transcribe_audio
+    return {"text": await transcribe_audio(await audio.read(), audio.content_type or "audio/mp4")}
+
+
+@app.get("/api/demo/stream")
+async def demo_stream():
+    session_id = await manager.create("demo", "call", demo=True)
+    session = manager.sessions[session_id]
+    asyncio.create_task(manager.run(session))
+    return StreamingResponse(event_generator(session_id), media_type="text/event-stream")
+
+
+@app.get("/healthz")
+def health():
+    return {"ok": True, "agents": {name: settings.agent_mode_for(name) for name in settings.agent_names}, "mode": settings.agent_mode}
+
+
+@app.get("/{path:path}")
+def spa(path: str):
+    index = DIST / "index.html"
+    if index.exists():
+        return FileResponse(index)
+    raise HTTPException(503, "Frontend is not built. Run npm run build in frontend/.")
