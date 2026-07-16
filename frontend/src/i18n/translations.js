@@ -31,7 +31,7 @@ const translations = {
   'home.rotate.4': { en: 'Your Safe Place.', ms: 'Tempat Selamat Anda.' },
 
   // Home — Quick Actions
-  'home.action.image.title': { en: 'Image Deepfake Scanner', ms: 'Pengimbas Deepfake Imej' },
+  'home.action.image.title': { en: 'Image Scanner', ms: 'Pengimbas Imej' },
   'home.action.image.desc': { en: 'Detect AI-generated faces and manipulated photos', ms: 'Kesan wajah janaan AI dan foto manipulasi' },
   'home.action.text.title': { en: 'Scam Check', ms: 'Semakan Penipuan' },
   'home.action.text.desc': { en: 'Check a message, link, phone number or bank account', ms: 'Semak mesej, pautan, nombor telefon atau akaun bank' },
@@ -70,7 +70,7 @@ const translations = {
   'feed.severity.low': { en: 'LOW', ms: 'RENDAH' },
 
   // ─── Image Scan Page ───
-  'image.title': { en: 'Image Deepfake Scanner', ms: 'Pengimbas Deepfake Imej' },
+  'image.title': { en: 'Image Scanner', ms: 'Pengimbas Imej' },
   'image.subtitle': { en: 'Upload an image to check if it has been manipulated or AI-generated.', ms: 'Muat naik imej untuk semak jika ia dimanipulasi atau janaan AI.' },
   'image.tryDemo': { en: 'Or try a demo:', ms: 'Atau cuba demo:' },
   'image.realPhoto': { en: 'Real Photo', ms: 'Foto Sebenar' },
