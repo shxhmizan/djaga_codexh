@@ -1,6 +1,8 @@
 """Small SQLite repository. Audio blobs are intentionally never persisted."""
 from __future__ import annotations
 import json
+import logging
+import re
 import sqlite3
 import time
 from typing import Any
@@ -8,6 +10,7 @@ from config import settings
 from contracts import FeedItem, User, Verdict
 
 IS_POSTGRES = bool(settings.database_url)
+logger = logging.getLogger(__name__)
 
 class PostgresConnection:
     """DB-API-shaped adapter allowing repositories to stay database-agnostic."""
@@ -32,12 +35,20 @@ def connection():
     return con
 
 def init_db() -> None:
+    global IS_POSTGRES
     if IS_POSTGRES:
-        from pathlib import Path
-        with connection() as con:
-            for statement in Path(__file__).with_name("migrations").joinpath("001_initial.sql").read_text().split(";\n"):
-                if statement.strip(): con.execute(statement)
-        return
+        try:
+            from pathlib import Path
+            with connection() as con:
+                for statement in Path(__file__).with_name("migrations").joinpath("001_initial.sql").read_text().split(";\n"):
+                    if statement.strip(): con.execute(statement)
+            return
+        except Exception as exc:
+            # Development must remain usable offline even if a configured
+            # Supabase pooler is temporarily unreachable. Production can still
+            # use PostgreSQL the moment its connection succeeds on startup.
+            logger.warning("Supabase unavailable; using local SQLite for this process: %s", exc)
+            IS_POSTGRES = False
     with connection() as con:
         con.executescript("""
         CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY,email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL,name TEXT NOT NULL,language TEXT NOT NULL,auth_method TEXT NOT NULL);
@@ -129,6 +140,49 @@ def get_feed(scam_type: str | None=None,limit:int=60) -> list[dict[str,Any]]:
     if scam_type: sql+=" WHERE lower(scam_type)=lower(?)";args=[scam_type]
     sql+=" ORDER BY date DESC, id DESC LIMIT ?";args.append(limit)
     with connection() as con: return [dict(r) for r in con.execute(sql,args).fetchall()]
+
+
+def registry_candidates(query: str, limit: int = 5) -> list[dict[str, Any]]:
+    """Return locally persisted intelligence ranked by token overlap.
+
+    This is the keyless, real-data Registry fallback. It deliberately queries
+    the feed and community reports already stored in Supabase/SQLite rather
+    than inventing registry matches when Vector Search is not provisioned.
+    """
+    tokens = _tokens(query)
+    if not tokens:
+        return []
+    records: list[dict[str, Any]] = []
+    with connection() as con:
+        feed_rows = con.execute("SELECT title,summary,scam_type,region,source_url FROM feed_items ORDER BY date DESC LIMIT 250").fetchall()
+        report_rows = con.execute("SELECT ai_title,ai_summary,ai_type,location,confidence FROM community_reports WHERE status IN ('published','approved','pending') ORDER BY created_at DESC LIMIT 250").fetchall()
+    for row in feed_rows:
+        item = dict(row)
+        corpus = f"{item.get('title', '')} {item.get('summary', '')} {item.get('scam_type', '')}"
+        score = _overlap(tokens, _tokens(corpus))
+        if score:
+            records.append({"title": item["title"], "summary": item["summary"], "scam_type": item["scam_type"], "region": item["region"], "source_url": item["source_url"], "similarity": score, "source": "djaga_feed"})
+    for row in report_rows:
+        item = dict(row)
+        corpus = f"{item.get('ai_title', '')} {item.get('ai_summary', '')} {item.get('ai_type', '')}"
+        score = _overlap(tokens, _tokens(corpus))
+        if score:
+            records.append({"title": item["ai_title"], "summary": item["ai_summary"], "scam_type": item["ai_type"], "region": item.get("location") or "Malaysia", "similarity": score, "source": "community_report"})
+    return sorted(records, key=lambda item: item["similarity"], reverse=True)[:limit]
+
+
+def _tokens(value: str) -> set[str]:
+    stop = {"the", "and", "for", "with", "that", "this", "from", "your", "you", "to", "a", "an", "of", "is", "in", "on", "now", "saya", "yang", "dan", "untuk", "ini", "dengan"}
+    return {token for token in re.findall(r"[a-z0-9]{3,}", value.lower()) if token not in stop}
+
+
+def _overlap(query: set[str], candidate: set[str]) -> float:
+    common = query & candidate
+    if not common:
+        return 0.0
+    # A small overlap is still useful for scam evidence, but cannot dominate
+    # a verdict. The Registry agent caps the eventual score below.
+    return round(len(common) / max(1, len(query)), 3)
 def add_chat(user_id:str,role:str,content:str)->None:
     with connection() as con:con.execute("INSERT INTO chat_messages (user_id,role,content,created_at) VALUES (?,?,?,?)",(user_id,role,content,time.time()))
 

@@ -11,6 +11,7 @@ import Profile from './pages/Profile';
 import Feed from './pages/Feed';
 import Login from './pages/Login';
 import Chat from './pages/Chat';
+import Trace from './pages/Trace';
 import NotFound from './pages/NotFound';
 import { useApp } from './context/AppContext';
 
@@ -50,6 +51,7 @@ function App() {
           <Route path="/feed" element={<Feed />} />
           <Route path="/map" element={<Navigate to="/feed" replace />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/trace/:sessionId" element={<Trace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

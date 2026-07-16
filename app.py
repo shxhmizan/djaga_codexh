@@ -109,11 +109,23 @@ async def analyze_check(
     djaga_session: str | None = Cookie(None),
 ):
     user = require_user(djaga_session)
+    check = get_check(session_id, user.id)
+    if not check:
+        raise HTTPException(404, "Check not found")
     # JSON text is useful for the message scanner; multipart supports uploads.
     if request.headers.get("content-type", "").startswith("application/json"):
         body = await request.json()
         text = body.get("text", text)
     data = await file.read() if file else None
+    kind = check["kind"]
+    if kind == "message" and not (text or "").strip():
+        raise HTTPException(422, "Message checks require text")
+    if kind == "image":
+        if not file or file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
+            raise HTTPException(415, "Image checks require a JPEG, PNG, or WebP upload")
+    if kind == "voice":
+        if not file or file.content_type not in {"audio/mp4", "audio/x-m4a", "audio/mpeg", "audio/wav", "audio/x-wav", "audio/webm", "audio/ogg"}:
+            raise HTTPException(415, "Voice checks require an M4A, MP3, WAV, WebM, or OGG upload")
     await manager.analyze(session_id, user.id, text=text, blob=data, content_type=file.content_type if file else None)
     return {"ok": True, "session_id": session_id}
 

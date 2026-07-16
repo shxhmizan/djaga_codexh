@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, AlertTriangle, RotateCcw, Download } from 'lucide-react';
+import { Shield, AlertTriangle, RotateCcw, Download, Network } from 'lucide-react';
 import ConfidenceGauge from './ConfidenceGauge';
 import KeywordPills from './KeywordPills';
 import ParticleBurst from './ParticleBurst';
@@ -197,6 +197,7 @@ export default function ResultCard({ result, onReset, onDownloadReport }) {
               Download Report
             </Button>
           </div>
+          {result.traceUrl && <a href={result.traceUrl} className="mt-3 w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl text-sm font-medium" style={{ color: 'var(--accent)', border: '1px solid var(--accent-border)' }}><Network size={16} /> View investigation trace</a>}
         </div>
       </div>
     </div>

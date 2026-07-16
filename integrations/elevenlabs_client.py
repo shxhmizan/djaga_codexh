@@ -6,11 +6,14 @@ from config import settings
 async def transcribe_audio(audio:bytes,content_type:str)->str:
  if not settings.elevenlabs_api_key: raise RuntimeError('ELEVENLABS_API_KEY is not configured; transcribe agent should use mock mode')
  headers={'xi-api-key':settings.elevenlabs_api_key}
- files={'file':('recording.m4a',audio,content_type)}
+ extension={"audio/mp4":"m4a","audio/x-m4a":"m4a","audio/mpeg":"mp3","audio/wav":"wav","audio/x-wav":"wav","audio/webm":"webm","audio/ogg":"ogg"}.get(content_type,"m4a")
+ files={'file':(f'recording.{extension}',audio,content_type)}
  data={'model_id':'scribe_v1','language_code':'ms'}
  async with httpx.AsyncClient(timeout=60) as client:
   res=await client.post('https://api.elevenlabs.io/v1/speech-to-text',headers=headers,files=files,data=data);res.raise_for_status();payload=res.json()
- return payload.get('text','')
+ transcript=(payload.get('text') or '').strip()
+ if not transcript: raise RuntimeError('ElevenLabs Scribe returned an empty transcript')
+ return transcript
 async def synthesize(text:str)->Response:
  if not settings.elevenlabs_api_key or not settings.el_voice_id: raise HTTPException(503,'ElevenLabs TTS is not configured')
  async with httpx.AsyncClient(timeout=60) as client:
