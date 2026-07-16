@@ -57,6 +57,9 @@ class PipelineManager:
                 await asyncio.sleep({"intake":.5,"forensics":4,"transcribe":6,"behavioral":7,"registry":9,"osint":12,"image_forensics":5}.get(name,.5)*settings.mock_delay_scale)
             result=await get_agent(name).run(kind=s.kind,text=s.text,blob=s.blob,content_type=s.content_type)
             s.results[name]=result
+            if result.unavailable:
+                await self.emit(s,"trace",name,"unavailable",result.payload.get("claim",f"{name.title()} was unavailable; DJAGA continued without it."))
+                return result
             if name=="transcribe":
                 transcript=result.payload.get("transcript","");s.text=transcript
                 await self.emit(s,"transcript",name,"evidence",transcript,evidence={"transcript":transcript})

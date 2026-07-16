@@ -1,6 +1,7 @@
 import os
 os.environ['DJAGA_DB_PATH']='/tmp/djaga-test.db'
 os.environ['MOCK_DELAY_SCALE']='0'
+os.environ['IMAGE_FORENSICS_MODE']='mock'
 # Tests must remain self-contained even when a developer has configured a
 # Supabase connection in their local .env file.
 os.environ['SUPABASE_DB_URL']=''

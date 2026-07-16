@@ -40,6 +40,10 @@ class OSINTAgent:
     async def run(self, **kwargs):
         text = (kwargs.get("text") or "").strip()
         entities = extract_entities(text)
+        # A bare image has no reliable entity to investigate without OCR. Do
+        # not manufacture the mock LHDN evidence on a real image analysis.
+        if kwargs.get("kind") == "image" and (settings.agent_mode_for("osint") != "real" or not settings.exa_api_key):
+            return AgentResult(agent="osint", unavailable=True, payload={"claim": "OSINT skipped: no accompanying entity text and no live Exa search configured."})
         if settings.agent_mode_for("osint") != "real" or not settings.exa_api_key:
             return await mock_agents.osint(text=text)
         if not entities:
