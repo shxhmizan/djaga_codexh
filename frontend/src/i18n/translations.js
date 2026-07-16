@@ -33,8 +33,8 @@ const translations = {
   // Home — Quick Actions
   'home.action.image.title': { en: 'Image Deepfake Scanner', ms: 'Pengimbas Deepfake Imej' },
   'home.action.image.desc': { en: 'Detect AI-generated faces and manipulated photos', ms: 'Kesan wajah janaan AI dan foto manipulasi' },
-  'home.action.text.title': { en: 'Scam Message Scanner', ms: 'Pengimbas Mesej Penipuan' },
-  'home.action.text.desc': { en: 'Check suspicious SMS, WhatsApp and emails', ms: 'Semak SMS, WhatsApp dan emel mencurigakan' },
+  'home.action.text.title': { en: 'Scam Check', ms: 'Semakan Penipuan' },
+  'home.action.text.desc': { en: 'Check a message, link, phone number or bank account', ms: 'Semak mesej, pautan, nombor telefon atau akaun bank' },
   'home.action.voice.title': { en: 'Voice Deepfake Scanner', ms: 'Pengimbas Deepfake Suara' },
   'home.action.voice.desc': { en: 'Verify if audio is human or AI-generated', ms: 'Sahkan sama ada audio adalah manusia atau janaan AI' },
   'home.action.profile.title': { en: 'My Digital ID', ms: 'ID Digital Saya' },

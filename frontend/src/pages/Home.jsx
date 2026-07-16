@@ -48,7 +48,7 @@ export default function Home() {
 
   const quickActions = [
     { path: '/image', titleKey: 'home.action.image.title', descKey: 'home.action.image.desc', icon: Image, accent: '#6C63FF', accentDim: 'rgba(108,99,255,0.12)' },
-    { path: '/text', titleKey: 'home.action.text.title', descKey: 'home.action.text.desc', icon: MessageSquare, accent: '#0DCCB1', accentDim: 'rgba(13,204,177,0.12)' },
+    { path: '/scam-check', titleKey: 'home.action.text.title', descKey: 'home.action.text.desc', icon: MessageSquare, accent: '#0DCCB1', accentDim: 'rgba(13,204,177,0.12)' },
     { path: '/voice', titleKey: 'home.action.voice.title', descKey: 'home.action.voice.desc', icon: Mic, accent: '#F59E0B', accentDim: 'rgba(245,158,11,0.12)' },
   ];
 

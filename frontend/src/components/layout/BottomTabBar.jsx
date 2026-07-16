@@ -5,7 +5,7 @@ import { useState } from 'react';
 const tabs = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/image', label: 'Image', icon: Image },
-  { path: '/text', label: 'Text', icon: MessageSquare },
+  { path: '/scam-check', label: 'Check', icon: MessageSquare },
   { path: '/feed', label: 'Feed', icon: Globe },
   { path: '/profile', label: 'Profile', icon: User },
 ];

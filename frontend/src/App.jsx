@@ -5,7 +5,7 @@ import SplashScreen from './components/layout/SplashScreen';
 import Toast from './components/ui/Toast';
 import Home from './pages/Home';
 import ImageScan from './pages/ImageScan';
-import TextScan from './pages/TextScan';
+import ScamCheck from './pages/ScamCheck';
 import VoiceScan from './pages/VoiceScan';
 import Profile from './pages/Profile';
 import Feed from './pages/Feed';
@@ -43,7 +43,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/image" element={<ImageScan />} />
-          <Route path="/text" element={<TextScan />} />
+          <Route path="/text" element={<Navigate to="/scam-check" replace />} />
+          <Route path="/scam-check" element={<ScamCheck />} />
           <Route path="/voice" element={<VoiceScan />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/feed" element={<Feed />} />

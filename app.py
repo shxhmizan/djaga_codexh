@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 import uuid
 from pathlib import Path
@@ -14,11 +15,12 @@ from fastapi.staticfiles import StaticFiles
 from assistant.chat import stream_reply
 from auth import current_user, login, logout, mydigital_login, register
 from config import settings
-from contracts import FeedItem, User
-from db import get_check, get_feed, get_intelligence, get_verdict, init_db, list_checks, save_community_report, set_language, upsert_feed
+from contracts import FeedItem, User, Verdict
+from db import create_check as db_create_check, get_check, get_feed, get_intelligence, get_verdict, init_db, list_checks, save_community_report, save_verdict, set_language, upsert_feed
 from jobs.harvester import harvest
 from pipeline import manager
 from report_analyzer import analyze_report, coordinates_for
+from integrations.semakmule_mock import lookup as semakmule_lookup
 
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "frontend" / "dist"
@@ -211,6 +213,39 @@ def submit_community_report(payload: dict, djaga_session: str | None = Cookie(No
             date=time.strftime("%Y-%m-%d"),
         )])
     return {"id": report_id, "analysis": analysis, "status": "community_unverified", "published": consent_public}
+
+
+@app.post("/api/scam-check/identifier")
+def check_identifier(payload: dict, djaga_session: str | None = Cookie(None)):
+    """Checks an identifier against the mock registry and the live DJAGA feed."""
+    user = require_user(djaga_session)
+    value = str(payload.get("value", "")).strip()
+    if not value or len(value) > 500:
+        raise HTTPException(422, "Enter a phone number, bank account, or link to check.")
+    digits = re.sub(r"\D", "", value)
+    if re.match(r"^(https?://)?[^\s/]+\.[^\s]+", value, re.I):
+        kind = "link"
+    elif re.match(r"^(?:\+?60|0)\d{8,10}$", re.sub(r"[\s-]", "", value)):
+        kind = "phone"
+    elif 8 <= len(digits) <= 18:
+        kind = "bank_account"
+    else:
+        raise HTTPException(422, "That does not look like a phone number, bank account, or web link.")
+    registry = semakmule_lookup(value)
+    matches = [item for item in get_feed(limit=100) if value.lower() in (item["title"] + item["summary"]).lower()]
+    report_count = int(registry.get("report_count", 0)) + len(matches)
+    risk = 0.78 if report_count else 0.18
+    level = "danger" if risk >= settings.danger_threshold else "safe"
+    label = {"phone": "phone number", "link": "web link", "bank_account": "bank account"}[kind]
+    evidence = [
+        {"agent": "registry", "claim": f"SemakMule MOCK returned {registry.get('report_count', 0)} seeded report(s) for this {label}.", "weight_contribution": 0.75},
+        {"agent": "osint", "claim": f"DJAGA feed found {len(matches)} matching intelligence alert(s).", "weight_contribution": 0.25},
+    ]
+    check_id = str(uuid.uuid4())
+    db_create_check(check_id, user.id, "message")
+    verdict = Verdict(risk=risk, level=level, kind="message", evidence=evidence, excerpt=f"Identifier check: {kind}", flagged_phrases=[])
+    save_verdict(check_id, verdict)
+    return {"check_id": check_id, "kind": kind, "risk": risk, "level": level, "registry": registry, "feed_matches": matches[:3], "evidence": evidence}
 
 
 @app.post("/api/chat")
