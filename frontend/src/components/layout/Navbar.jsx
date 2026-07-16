@@ -7,7 +7,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 const NAV_KEYS = [
   { path: '/feed', labelKey: 'nav.feed', icon: Newspaper },
   { path: '/', labelKey: 'nav.home', icon: Home },
-  { path: '/chat', labelKey: 'Assistant', icon: MessageCircle },
+  { path: '/chat', labelKey: 'Chat', icon: MessageCircle },
   { path: '/profile', labelKey: 'nav.profile', icon: User },
 ];
 

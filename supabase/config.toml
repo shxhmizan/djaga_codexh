@@ -1,6 +1,0 @@
-project_id = "djaga"
-
-[functions.elevenlabs-records-webhook]
-# ElevenLabs is an external service and will not send a Supabase user JWT.
-# The function validates its own shared secret header before doing any work.
-verify_jwt = false
