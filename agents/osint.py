@@ -21,6 +21,7 @@ def extract_entities(text: str) -> list[str]:
             found.append(entity.upper() if entity in {"lhdn", "pdrm", "bnm", "nsrc", "kwsp", "cimb", "rhb"} else entity.title())
     found.extend(re.findall(r"(?:https?://)?(?:www\.)?[a-z0-9-]+\.[a-z]{2,}(?:/[^\s]*)?", text, re.I))
     found.extend(re.findall(r"(?:\+?60|0)\d[\d\s-]{7,12}", text))
+    found.extend(re.findall(r"(?<!\d)\d{8,18}(?!\d)", text.replace(" ", "").replace("-", "")))
     # Named schemes normally survive as a short title-cased phrase.
     found.extend(re.findall(r"\b(?:Macau Scam|Love Scam|Lucky Draw|Investment Scheme|Parcel Scam)\b", text, re.I))
     unique: list[str] = []
