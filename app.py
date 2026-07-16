@@ -14,7 +14,7 @@ from assistant.chat import stream_reply
 from auth import current_user, login, logout, mydigital_login, register
 from config import settings
 from contracts import User
-from db import get_check, get_feed, get_verdict, init_db, list_checks, set_language
+from db import get_check, get_feed, get_intelligence, get_verdict, init_db, list_checks, set_language
 from jobs.harvester import harvest
 from pipeline import manager
 
@@ -29,6 +29,8 @@ if (DIST / "assets").exists():
 @app.on_event("startup")
 async def startup() -> None:
     init_db()
+    from scripts.migrate_frontend_intelligence import ensure_seeded
+    ensure_seeded()
     # Seed data is part of a usable zero-key installation, not an API-response mock.
     harvest(seed_only=True)
 
@@ -155,6 +157,14 @@ async def check_stream(session_id: str, djaga_session: str | None = Cookie(None)
 def api_feed(type: str | None = None, limit: int = 60, djaga_session: str | None = Cookie(None)):
     require_user(djaga_session)
     return get_feed(type, min(max(limit, 1), 100))
+
+
+@app.get("/api/intelligence")
+def api_intelligence(djaga_session: str | None = Cookie(None)):
+    """Database-backed map, intelligence panel, and statistics data."""
+    require_user(djaga_session)
+    kinds = ("map_points", "scam_types", "city_stats", "insights", "live_stats", "top_accounts", "top_phones", "monthly_trend")
+    return {kind: get_intelligence(kind) for kind in kinds}
 
 
 @app.post("/api/feed/refresh")

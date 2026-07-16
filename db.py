@@ -14,7 +14,9 @@ class PostgresConnection:
     def __init__(self):
         import psycopg
         from psycopg.rows import dict_row
-        self.raw = psycopg.connect(settings.database_url, row_factory=dict_row)
+        # Supabase's transaction pooler does not retain psycopg prepared
+        # statements across requests, so disable automatic preparation.
+        self.raw = psycopg.connect(settings.database_url, row_factory=dict_row, prepare_threshold=None)
     def execute(self, sql: str, params=()):
         return self.raw.execute(sql.replace("?", "%s"), params)
     def __enter__(self): return self
@@ -44,6 +46,7 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS verdicts (check_id TEXT PRIMARY KEY,risk REAL NOT NULL,level TEXT NOT NULL,kind TEXT NOT NULL,evidence TEXT NOT NULL,excerpt TEXT,flagged_phrases TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS feed_items (id INTEGER PRIMARY KEY AUTOINCREMENT,dedupe_key TEXT UNIQUE NOT NULL,scam_type TEXT NOT NULL,title TEXT NOT NULL,summary TEXT NOT NULL,region TEXT NOT NULL,lat REAL NOT NULL,lng REAL NOT NULL,source_name TEXT NOT NULL,source_url TEXT NOT NULL,date TEXT NOT NULL,created_at REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT,user_id TEXT NOT NULL,role TEXT NOT NULL,content TEXT NOT NULL,created_at REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS intelligence_records (kind TEXT NOT NULL,record_key TEXT NOT NULL,payload TEXT NOT NULL,updated_at REAL NOT NULL,PRIMARY KEY (kind,record_key));
         """)
         # Migrate the very early prototype schema in-place for existing local installs.
         user_columns={row['name'] for row in con.execute("PRAGMA table_info(users)").fetchall()}
@@ -127,3 +130,41 @@ def get_feed(scam_type: str | None=None,limit:int=60) -> list[dict[str,Any]]:
     with connection() as con: return [dict(r) for r in con.execute(sql,args).fetchall()]
 def add_chat(user_id:str,role:str,content:str)->None:
     with connection() as con:con.execute("INSERT INTO chat_messages (user_id,role,content,created_at) VALUES (?,?,?,?)",(user_id,role,content,time.time()))
+
+
+def upsert_intelligence(kind: str, records: list[dict[str, Any]], key: str = "id") -> int:
+    """Persist intelligence displayed by the product, independent of frontend fixtures."""
+    if not records:
+        return 0
+    now = time.time()
+    with connection() as con:
+        for index, record in enumerate(records):
+            record_key = str(record.get(key, index))
+            payload = json.dumps(record)
+            if IS_POSTGRES:
+                con.execute(
+                    "INSERT INTO intelligence_records (kind,record_key,payload,updated_at) VALUES (?,?,?::jsonb,?) "
+                    "ON CONFLICT (kind,record_key) DO UPDATE SET payload=EXCLUDED.payload,updated_at=EXCLUDED.updated_at",
+                    (kind, record_key, payload, now),
+                )
+            else:
+                con.execute(
+                    "INSERT OR REPLACE INTO intelligence_records (kind,record_key,payload,updated_at) VALUES (?,?,?,?)",
+                    (kind, record_key, payload, now),
+                )
+    return len(records)
+
+
+def get_intelligence(kind: str) -> list[dict[str, Any]]:
+    with connection() as con:
+        rows = con.execute(
+            "SELECT record_key,payload FROM intelligence_records WHERE kind=? ORDER BY record_key",
+            (kind,),
+        ).fetchall()
+    return [row["payload"] if isinstance(row["payload"], dict) else json.loads(row["payload"]) for row in rows]
+
+
+def intelligence_count() -> int:
+    with connection() as con:
+        row = con.execute("SELECT COUNT(*) AS total FROM intelligence_records").fetchone()
+    return int(row["total"])

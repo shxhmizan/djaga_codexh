@@ -4,21 +4,21 @@ import MapControls from './MapControls';
 import MapLegend from './MapLegend';
 import AIInsightsPanel from './AIInsightsPanel';
 import LiveStats from './LiveStats';
-import { SCAM_POINTS } from '../../data/dummyMapData';
-import { LIVE_STATS } from '../../data/dummyAIInsights';
 import { useApp } from '../../context/AppContext';
+import useIntelligence from '../../hooks/useIntelligence';
 
 export default function ScamHeatmap() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
-  const [liveStats, setLiveStats] = useState({ ...LIVE_STATS });
   const [feedPoints, setFeedPoints] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState('');
 
-  const { addToast, theme } = useApp();
+  const { theme } = useApp();
+  const { data: intelligence } = useIntelligence();
+  const liveStats = intelligence.live_stats[0] || {};
 
   useEffect(() => {
     const typeFor = (type) => {
@@ -30,11 +30,6 @@ export default function ScamHeatmap() {
     fetch('/api/feed', { credentials: 'include' }).then(response => response.ok ? response.json() : []).then(items => {
       const points = items.map((item, index) => ({ lat: item.lat, lng: item.lng, type: typeFor(item.scam_type), count: 1, area: item.region, date: item.date, title: item.title, id: `${item.region}-${index}` }));
       setFeedPoints(points);
-      if (points.length) {
-        const grouped = points.reduce((acc, point) => ({ ...acc, [point.area]: (acc[point.area] || 0) + 1 }), {});
-        const mostAffectedCity = Object.entries(grouped).sort((a, b) => b[1] - a[1])[0][0];
-        setLiveStats(prev => ({ ...prev, totalReportsToday: points.length, activeAlerts: points.length, newSinceYesterday: points.length, mostAffectedCity }));
-      }
     }).catch(() => {});
   }, []);
   const requestLocation = () => {
@@ -42,8 +37,8 @@ export default function ScamHeatmap() {
     setLocating(true); setLocationError('');
     navigator.geolocation.getCurrentPosition(position => { setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude }); setLocating(false); }, () => { setLocationError('Location permission was not granted. You can enable it in browser settings.'); setLocating(false); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   };
-  // Keep the nationwide intelligence layer visible while adding freshly harvested feed records.
-  const mapPoints = useMemo(() => [...SCAM_POINTS, ...feedPoints], [feedPoints]);
+  // Both the seed intelligence and harvested feed are now loaded from the database.
+  const mapPoints = useMemo(() => [...intelligence.map_points, ...feedPoints], [intelligence.map_points, feedPoints]);
   // Filter points by scam type
   const filteredPoints = useMemo(() => {
     if (activeFilter === 'all') return mapPoints;
@@ -54,27 +49,6 @@ export default function ScamHeatmap() {
   const heatmapData = useMemo(() => {
     return filteredPoints.map(p => [p.lat, p.lng, Math.min(p.count / 50, 1.0)]);
   }, [filteredPoints]);
-
-  // Auto-refresh simulation every 30 seconds
-  useEffect(() => {
-    const areas = mapPoints.map(p => p.area);
-    const interval = setInterval(() => {
-      const randomArea = areas[Math.floor(Math.random() * areas.length)];
-      const increment = Math.floor(Math.random() * 5) + 1;
-
-      setLiveStats(prev => ({
-        ...prev,
-        totalReportsToday: prev.totalReportsToday + increment,
-        newSinceYesterday: prev.newSinceYesterday + increment,
-      }));
-
-      if (addToast) {
-        addToast({ message: `🚨 New scam alert reported in ${randomArea}`, type: 'warning' });
-      }
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [addToast, mapPoints]);
 
   return (
     <div style={{
@@ -165,7 +139,7 @@ export default function ScamHeatmap() {
       <div className="scam-heatmap-main">
         {/* Map Section */}
         <div className="scam-heatmap-map">
-          <MapControls
+          <MapControls scamTypes={intelligence.scam_types}
             activeFilter={activeFilter}
             onFilterChange={setActiveFilter}
             showHeatmap={showHeatmap}
@@ -178,7 +152,7 @@ export default function ScamHeatmap() {
           />
 
           <div style={{ flex: 1, minHeight: '480px', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-            <LeafletMap
+            <LeafletMap scamTypes={intelligence.scam_types}
               points={filteredPoints}
               heatmapData={heatmapData}
               showHeatmap={showHeatmap}
@@ -188,12 +162,12 @@ export default function ScamHeatmap() {
             />
           </div>
 
-          <MapLegend />
+          <MapLegend scamTypes={intelligence.scam_types} />
         </div>
 
         {/* AI Insights Panel */}
         <div className="scam-heatmap-panel">
-          <AIInsightsPanel activeFilter={activeFilter} />
+          <AIInsightsPanel activeFilter={activeFilter} intelligence={intelligence} />
         </div>
       </div>
     </div>

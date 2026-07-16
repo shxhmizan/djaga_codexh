@@ -1,13 +1,11 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { CURRENT_USER } from '../data/dummyUsers';
-import { SCAN_HISTORY } from '../data/dummyScans';
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [scanHistory, setScanHistory] = useState(SCAN_HISTORY);
+  const [scanHistory, setScanHistory] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [isMuted, setIsMuted] = useState(() => {
     try {

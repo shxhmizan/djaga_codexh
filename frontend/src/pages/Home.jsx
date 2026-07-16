@@ -5,7 +5,6 @@ import PageWrapper from '../components/layout/PageWrapper';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { useTranslation } from '../hooks/useTranslation';
-import { SCAM_FEED } from '../data/dummyScamFeed';
 
 const ROTATE_KEYS = ['home.rotate.1', 'home.rotate.2', 'home.rotate.3', 'home.rotate.4'];
 
@@ -45,6 +44,7 @@ export default function Home() {
   const { t } = useTranslation();
   const [showAlert, setShowAlert] = useState(true);
   const [animatedStats, setAnimatedStats] = useState(false);
+  const [criticalAlerts, setCriticalAlerts] = useState(0);
 
   const quickActions = [
     { path: '/image', titleKey: 'home.action.image.title', descKey: 'home.action.image.desc', icon: Image, accent: '#6C63FF', accentDim: 'rgba(108,99,255,0.12)' },
@@ -64,7 +64,12 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [t]);
 
-  const criticalAlerts = SCAM_FEED.filter(a => a.severity === 'critical').length;
+  useEffect(() => {
+    fetch('/api/feed', { credentials: 'include' })
+      .then(response => response.ok ? response.json() : [])
+      .then(items => setCriticalAlerts(items.filter(item => /cloned|deepfake|critical/i.test(item.scam_type)).length))
+      .catch(() => setCriticalAlerts(0));
+  }, []);
 
   return (
     <PageWrapper>

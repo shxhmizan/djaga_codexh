@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, Check, Clock, Minus } from 'lucide-react';
-import { TRUST_BREAKDOWN } from '../../data/dummyTrustScore';
 
-export default function TrustScoreMeter() {
+const EMPTY_TRUST = { total: 0, maxPossible: 1000, band: 'Unavailable', categories: [] };
+
+export default function TrustScoreMeter({ data }) {
   const [animatedScore, setAnimatedScore] = useState(0);
   const [expandedCategory, setExpandedCategory] = useState(null);
-  const data = TRUST_BREAKDOWN;
+  const value = data || EMPTY_TRUST;
 
   // Animate score count-up
   useEffect(() => {
@@ -16,16 +17,16 @@ export default function TrustScoreMeter() {
       const elapsed = Date.now() - start;
       const t = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - t, 3);
-      setAnimatedScore(Math.round(data.total * eased));
+      setAnimatedScore(Math.round(value.total * eased));
       if (t < 1) raf = requestAnimationFrame(animate);
     }
     raf = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(raf);
-  }, [data.total]);
+  }, [value.total]);
 
   const radius = 80;
   const circumference = 2 * Math.PI * radius;
-  const pct = animatedScore / data.maxPossible;
+  const pct = animatedScore / value.maxPossible;
   const offset = circumference - pct * circumference;
   const svgSize = 200;
   const center = svgSize / 2;
@@ -70,18 +71,18 @@ export default function TrustScoreMeter() {
           </text>
           <text x={center} y={center + 14} textAnchor="middle" dominantBaseline="middle"
             fill="var(--text-tertiary)" style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
-            / {data.maxPossible}
+            / {value.maxPossible}
           </text>
           <text x={center} y={center + 34} textAnchor="middle" dominantBaseline="middle"
             fill={getBandColor(animatedScore)} style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 600 }}>
-            {data.band}
+            {value.band}
           </text>
         </svg>
       </div>
 
       {/* Category breakdown */}
       <div className="space-y-3 mb-8">
-        {data.categories.map((cat, i) => {
+        {value.categories.map((cat, i) => {
           const isExpanded = expandedCategory === i;
           const catPct = (cat.score / cat.max) * 100;
 

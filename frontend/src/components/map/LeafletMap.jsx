@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
-import { SCAM_TYPES } from '../../data/dummyMapData';
 
 // Fix Leaflet marker icons in Vite
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -49,8 +48,8 @@ const HEATMAP_CONFIG = {
   minOpacity: 0.3,
 };
 
-function createDivIcon(type) {
-  const meta = SCAM_TYPES[type];
+function createDivIcon(type, scamTypes) {
+  const meta = scamTypes[type];
   if (!meta) return L.divIcon({ className: 'custom-marker', html: '<div>📍</div>' });
 
   return L.divIcon({
@@ -75,8 +74,8 @@ function createDivIcon(type) {
   });
 }
 
-function buildPopupHTML(point) {
-  const typeData = SCAM_TYPES[point.type] || {};
+function buildPopupHTML(point, scamTypes) {
+  const typeData = scamTypes[point.type] || {};
   const daysAgo = Math.floor((Date.now() - new Date(point.date).getTime()) / 86400000);
   const timeLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`;
   const severityPct = Math.min(point.count / 50, 1);
@@ -126,13 +125,14 @@ function buildPopupHTML(point) {
   `;
 }
 
-export default function LeafletMap({ points, heatmapData, showHeatmap, showMarkers, theme = 'dark', userLocation }) {
+export default function LeafletMap({ points, heatmapData, showHeatmap, showMarkers, theme = 'dark', userLocation, scamTypes: typeRecords = [] }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const heatLayerRef = useRef(null);
   const markerLayerRef = useRef(null);
   const tileLayerRef = useRef(null);
   const userLayerRef = useRef(null);
+  const scamTypes = Object.fromEntries(typeRecords.map(type => [type.id, type]));
 
   // Init map once
   useEffect(() => {
@@ -203,10 +203,10 @@ export default function LeafletMap({ points, heatmapData, showHeatmap, showMarke
     if (!showMarkers) return;
 
     points.forEach((point, i) => {
-      const icon = createDivIcon(point.type);
+      const icon = createDivIcon(point.type, scamTypes);
       const marker = L.marker([point.lat, point.lng], { icon });
 
-      const popupContent = buildPopupHTML(point);
+      const popupContent = buildPopupHTML(point, scamTypes);
       marker.bindPopup(popupContent, {
         maxWidth: 280,
         className: 'djaga-popup',
@@ -216,7 +216,7 @@ export default function LeafletMap({ points, heatmapData, showHeatmap, showMarke
         layer.addLayer(marker);
       }, i * 30);
     });
-  }, [points, showMarkers]);
+  }, [points, showMarkers, typeRecords]);
 
   // Location never leaves the browser: it only controls this map view and local marker.
   useEffect(() => {

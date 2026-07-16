@@ -1,9 +1,7 @@
-import { SCAM_TYPES } from '../../data/dummyMapData';
-
-export default function ScamPopup({ point }) {
+export default function ScamPopup({ point, scamTypes = [] }) {
   if (!point) return null;
 
-  const typeData = SCAM_TYPES[point.type] || {};
+  const typeData = scamTypes.find(type => type.id === point.type) || {};
   const daysAgo = Math.floor((Date.now() - new Date(point.date).getTime()) / 86400000);
   const timeLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`;
 

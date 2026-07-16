@@ -11,6 +11,9 @@ def test_auth_feed_and_mock_pipeline():
   import uuid
   r=client.post('/api/auth/register',json={'email':f'{uuid.uuid4()}@example.com','password':'longpassword','name':'Test User'});assert r.status_code==200
   assert client.get('/api/feed').status_code==200
+  intelligence=client.get('/api/intelligence'); assert intelligence.status_code==200
+  assert len(intelligence.json()['map_points']) >= 90
+  assert len(intelligence.json()['insights']) >= 6
   started=client.post('/api/checks',json={'kind':'message'});assert started.status_code==200
   sid=started.json()['session_id'];assert client.post(f'/api/checks/{sid}/analyze',json={'text':'Transfer now'}).status_code==200
   import time

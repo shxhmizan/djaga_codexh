@@ -1,6 +1,4 @@
-import { SCAM_TYPES } from '../../data/dummyMapData';
-
-export default function MapLegend() {
+export default function MapLegend({ scamTypes = [] }) {
   return (
     <div style={{
       display: 'flex',
@@ -36,8 +34,8 @@ export default function MapLegend() {
 
       {/* Scam type chips */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-        {Object.entries(SCAM_TYPES).map(([key, t]) => (
-          <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {scamTypes.map(t => (
+          <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span style={{
               width: '8px', height: '8px', borderRadius: '50%',
               background: t.color, display: 'inline-block',

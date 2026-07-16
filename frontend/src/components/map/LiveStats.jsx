@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { LIVE_STATS } from '../../data/dummyAIInsights';
 import { useTranslation } from '../../hooks/useTranslation';
 
 const STATS_CONFIG = [
@@ -38,7 +37,7 @@ function AnimatedNumber({ target, color, format, isText }) {
 }
 
 export default function LiveStats({ stats }) {
-  const data = stats || LIVE_STATS;
+  const data = stats || {};
   const { t } = useTranslation();
 
   return (
@@ -55,7 +54,7 @@ export default function LiveStats({ stats }) {
       {STATS_CONFIG.map(cfg => (
         <div key={cfg.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '100px', flex: 1 }}>
           <AnimatedNumber
-            target={data[cfg.key]}
+            target={data[cfg.key] ?? (cfg.isText ? '—' : 0)}
             color={cfg.color}
             format={cfg.format}
             isText={cfg.isText}

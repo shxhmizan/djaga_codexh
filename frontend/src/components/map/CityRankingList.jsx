@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { CITY_STATS, SCAM_TYPES, SCAM_POINTS } from '../../data/dummyMapData';
 import { useTranslation } from '../../hooks/useTranslation';
 
-export default function CityRankingList({ activeFilter }) {
+export default function CityRankingList({ activeFilter, cityStats = [], scamTypes: typeRecords = [], mapPoints = [] }) {
   const [animated, setAnimated] = useState(false);
   const { t } = useTranslation();
 
@@ -11,8 +10,9 @@ export default function CityRankingList({ activeFilter }) {
     return () => clearTimeout(timer);
   }, []);
 
+  const scamTypes = Object.fromEntries(typeRecords.map(type => [type.id, type]));
   const stats = activeFilter === 'all'
-    ? CITY_STATS
+    ? cityStats
     : (() => {
         const cityBounds = {
           'Kuala Lumpur': { latMin: 3.05, latMax: 3.25, lngMin: 101.55, lngMax: 101.80 },
@@ -25,7 +25,7 @@ export default function CityRankingList({ activeFilter }) {
           'Melaka': { latMin: 2.10, latMax: 2.25, lngMin: 102.20, lngMax: 102.30 },
         };
         return Object.entries(cityBounds).map(([city, b]) => {
-          const pts = SCAM_POINTS.filter(
+          const pts = mapPoints.filter(
             p => p.type === activeFilter && p.lat >= b.latMin && p.lat <= b.latMax && p.lng >= b.lngMin && p.lng <= b.lngMax
           );
           return { city, total: pts.reduce((s, p) => s + p.count, 0), topType: activeFilter, rank: 0 };
@@ -50,7 +50,7 @@ export default function CityRankingList({ activeFilter }) {
       </h3>
 
       {stats.map((city, i) => {
-        const typeData = SCAM_TYPES[city.topType];
+        const typeData = scamTypes[city.topType];
         const barWidth = animated ? `${(city.total / maxTotal) * 100}%` : '0%';
 
         return (

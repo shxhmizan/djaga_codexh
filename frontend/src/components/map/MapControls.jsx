@@ -1,12 +1,9 @@
 import { LocateFixed } from 'lucide-react';
-import { SCAM_TYPES } from '../../data/dummyMapData';
-
-const allTypes = [
-  { key: 'all', label: 'All Types', emoji: '🗺️', color: 'var(--accent)' },
-  ...Object.entries(SCAM_TYPES).map(([key, v]) => ({ key, label: v.label.split(' /')[0].split(' ')[0], emoji: v.emoji, color: v.color })),
-];
-
-export default function MapControls({ activeFilter, onFilterChange, showHeatmap, onToggleHeatmap, showMarkers, onToggleMarkers, onLocate, locating, locationError }) {
+export default function MapControls({ activeFilter, onFilterChange, showHeatmap, onToggleHeatmap, showMarkers, onToggleMarkers, onLocate, locating, locationError, scamTypes = [] }) {
+  const allTypes = [
+    { id: 'all', label: 'All Types', emoji: '🗺️' },
+    ...scamTypes,
+  ];
   return (
     <div style={{
       display: 'flex',
@@ -18,7 +15,7 @@ export default function MapControls({ activeFilter, onFilterChange, showHeatmap,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '190px' }}>
         <select value={activeFilter} onChange={event => onFilterChange(event.target.value)} aria-label="Filter scam type" style={{ width: '100%', maxWidth: '220px', padding: '10px 34px 10px 12px', borderRadius: '10px', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)', fontSize: '12px', outline: 'none' }}>
-          {allTypes.map(type => <option value={type.key} key={type.key}>{type.emoji} {type.label}</option>)}
+          {allTypes.map(type => <option value={type.id} key={type.id}>{type.emoji} {type.label}</option>)}
         </select>
         <button onClick={onLocate} disabled={locating} title="Use my location" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 12px', borderRadius: '10px', background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent-border)', cursor: locating ? 'wait' : 'pointer', whiteSpace: 'nowrap', fontSize: '12px' }}><LocateFixed size={15}/>{locating ? 'Locating…' : 'My location'}</button>
       </div>

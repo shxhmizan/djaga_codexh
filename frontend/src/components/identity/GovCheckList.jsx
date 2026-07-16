@@ -1,18 +1,17 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { GOV_CHECKS } from '../../data/dummyGovCheck';
 import VerifiedBadge, { statusConfig } from './VerifiedBadge';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 
-export default function GovCheckList() {
+export default function GovCheckList({ checks = [] }) {
   const [showModal, setShowModal] = useState(false);
 
   return (
     <div>
       <div className="space-y-2">
-        {GOV_CHECKS.map((check) => {
+        {checks.map((check) => {
           const config = statusConfig[check.status] || statusConfig.pending;
 
           return (
@@ -54,6 +53,7 @@ export default function GovCheckList() {
             </div>
           );
         })}
+        {!checks.length && <p className="text-sm p-4" style={{ color: 'var(--text-tertiary)' }}>No verification records are available.</p>}
       </div>
 
       {/* Add more button */}
