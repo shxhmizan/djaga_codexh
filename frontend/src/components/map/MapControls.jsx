@@ -1,3 +1,4 @@
+import { LocateFixed } from 'lucide-react';
 import { SCAM_TYPES } from '../../data/dummyMapData';
 
 const allTypes = [
@@ -5,7 +6,7 @@ const allTypes = [
   ...Object.entries(SCAM_TYPES).map(([key, v]) => ({ key, label: v.label.split(' /')[0].split(' ')[0], emoji: v.emoji, color: v.color })),
 ];
 
-export default function MapControls({ activeFilter, onFilterChange, showHeatmap, onToggleHeatmap, showMarkers, onToggleMarkers }) {
+export default function MapControls({ activeFilter, onFilterChange, showHeatmap, onToggleHeatmap, showMarkers, onToggleMarkers, onLocate, locating, locationError }) {
   return (
     <div style={{
       display: 'flex',
@@ -15,36 +16,11 @@ export default function MapControls({ activeFilter, onFilterChange, showHeatmap,
       alignItems: 'center',
       justifyContent: 'space-between',
     }}>
-      {/* Filter buttons */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', flex: 1 }}>
-        {allTypes.map(t => {
-          const isActive = activeFilter === t.key;
-          return (
-            <button
-              key={t.key}
-              onClick={() => onFilterChange(t.key)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '6px 14px',
-                borderRadius: '999px',
-                border: `1px solid ${isActive ? t.color : 'var(--border)'}`,
-                background: isActive ? t.color : 'var(--bg-secondary)',
-                color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
-                fontSize: '12px',
-                fontFamily: "'Inter', sans-serif",
-                fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <span style={{ fontSize: '13px' }}>{t.emoji}</span>
-              {t.label}
-            </button>
-          );
-        })}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '190px' }}>
+        <select value={activeFilter} onChange={event => onFilterChange(event.target.value)} aria-label="Filter scam type" style={{ width: '100%', maxWidth: '220px', padding: '10px 34px 10px 12px', borderRadius: '10px', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)', fontSize: '12px', outline: 'none' }}>
+          {allTypes.map(type => <option value={type.key} key={type.key}>{type.emoji} {type.label}</option>)}
+        </select>
+        <button onClick={onLocate} disabled={locating} title="Use my location" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 12px', borderRadius: '10px', background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent-border)', cursor: locating ? 'wait' : 'pointer', whiteSpace: 'nowrap', fontSize: '12px' }}><LocateFixed size={15}/>{locating ? 'Locating…' : 'My location'}</button>
       </div>
 
       {/* Toggles */}
@@ -52,6 +28,7 @@ export default function MapControls({ activeFilter, onFilterChange, showHeatmap,
         <ToggleSwitch label="Heatmap" active={showHeatmap} onToggle={onToggleHeatmap} />
         <ToggleSwitch label="Markers" active={showMarkers} onToggle={onToggleMarkers} />
       </div>
+      {locationError && <p style={{ width: '100%', margin: 0, fontSize: '11px', color: 'var(--warning)' }}>{locationError}</p>}
     </div>
   );
 }

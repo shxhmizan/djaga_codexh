@@ -21,7 +21,8 @@ const TILE_LAYERS = {
     attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',
   },
   dark: {
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    // Brighter CARTO base keeps Malaysian geography legible within DJAGA's dark surface.
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
     attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
   },
 };
@@ -125,12 +126,13 @@ function buildPopupHTML(point) {
   `;
 }
 
-export default function LeafletMap({ points, heatmapData, showHeatmap, showMarkers, theme = 'dark' }) {
+export default function LeafletMap({ points, heatmapData, showHeatmap, showMarkers, theme = 'dark', userLocation }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const heatLayerRef = useRef(null);
   const markerLayerRef = useRef(null);
   const tileLayerRef = useRef(null);
+  const userLayerRef = useRef(null);
 
   // Init map once
   useEffect(() => {
@@ -152,6 +154,7 @@ export default function LeafletMap({ points, heatmapData, showHeatmap, showMarke
 
     mapRef.current = map;
     markerLayerRef.current = L.layerGroup().addTo(map);
+    userLayerRef.current = L.layerGroup().addTo(map);
 
     return () => {
       map.remove();
@@ -215,6 +218,17 @@ export default function LeafletMap({ points, heatmapData, showHeatmap, showMarke
     });
   }, [points, showMarkers]);
 
+  // Location never leaves the browser: it only controls this map view and local marker.
+  useEffect(() => {
+    const map = mapRef.current; const layer = userLayerRef.current;
+    if (!map || !layer) return;
+    layer.clearLayers();
+    if (!userLocation) return;
+    const marker = L.circleMarker([userLocation.lat, userLocation.lng], { radius: 9, color: '#ffffff', weight: 3, fillColor: '#4FD1A5', fillOpacity: 1 });
+    marker.bindPopup('Your location — only visible on this device.'); layer.addLayer(marker);
+    map.setView([userLocation.lat, userLocation.lng], Math.max(map.getZoom(), 11), { animate: true });
+  }, [userLocation]);
+
   return (
     <div
       ref={mapContainerRef}
@@ -224,8 +238,8 @@ export default function LeafletMap({ points, heatmapData, showHeatmap, showMarke
         minHeight: '400px',
         borderRadius: '16px',
         overflow: 'hidden',
+        background: '#315849',
       }}
     />
   );
 }
-

@@ -7,9 +7,9 @@ import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
+import ScamHeatmap from '../components/map/ScamHeatmap';
 
 export default function Feed() {
-  const [activeFilter, setActiveFilter] = useState('all');
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportType, setReportType] = useState('macau_scam');
   const [reportDescription, setReportDescription] = useState('');
@@ -17,15 +17,6 @@ export default function Feed() {
   const [liveAlerts, setLiveAlerts] = useState([]);
   const { addToast } = useApp();
   const { t } = useTranslation();
-
-  const FILTERS = [
-    { id: 'all', label: t('feed.all') },
-    { id: 'critical', label: t('feed.critical') },
-    { id: 'high', label: t('feed.high') },
-    { id: 'deepfake', label: t('feed.deepfake') },
-    { id: 'voice', label: t('feed.voice') },
-    { id: 'text', label: t('feed.text') },
-  ];
 
   useEffect(() => {
     document.title = `${t('feed.title')} — DJAGA`;
@@ -43,15 +34,7 @@ export default function Feed() {
       })))).catch(() => setLiveAlerts([]));
   }, []);
 
-  const filteredAlerts = liveAlerts.filter(alert => {
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'critical') return alert.severity === 'critical';
-    if (activeFilter === 'high') return alert.severity === 'high';
-    if (activeFilter === 'deepfake') return alert.type.includes('deepfake');
-    if (activeFilter === 'voice') return alert.type.includes('voice') || alert.type.includes('deepfake_call');
-    if (activeFilter === 'text') return alert.type.includes('phishing') || alert.type.includes('scam');
-    return true;
-  });
+  const filteredAlerts = liveAlerts;
 
   const handleSubmitReport = () => {
     setShowReportModal(false);
@@ -68,9 +51,6 @@ export default function Feed() {
           <h1 className="text-2xl lg:text-3xl font-bold mb-2" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-1px' }}>
             {t('feed.title')}
           </h1>
-          <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
-            {t('feed.subtitle')}
-          </p>
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full" style={{ background: 'var(--safe)' }} />
             <span className="text-xs" style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>
@@ -79,26 +59,22 @@ export default function Feed() {
           </div>
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-3 mb-6 no-scrollbar">
-          {FILTERS.map(filter => (
-            <button
-              key={filter.id}
-              onClick={() => setActiveFilter(filter.id)}
-              className="px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 min-h-[44px]"
-              style={{
-                background: activeFilter === filter.id ? 'var(--accent)' : 'var(--bg-secondary)',
-                color: activeFilter === filter.id ? 'white' : 'var(--text-secondary)',
-                border: `1px solid ${activeFilter === filter.id ? 'var(--accent)' : 'var(--border)'}`,
-                cursor: 'pointer',
-              }}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
+        {/* Unified intelligence map — the former standalone Intel Map now lives with its alerts. */}
+        <section className="mb-8">
+          <div className="flex items-end justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-lg font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Live intelligence map</h2>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Explore locations, signals, and emerging scam patterns alongside the live feed.</p>
+            </div>
+          </div>
+          <ScamHeatmap />
+        </section>
 
         {/* Feed */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Latest alerts</h2>
+          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{filteredAlerts.length} reports</span>
+        </div>
         <ScamFeed alerts={filteredAlerts} />
 
         {/* Report button */}

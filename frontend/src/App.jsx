@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import SplashScreen from './components/layout/SplashScreen';
 import Toast from './components/ui/Toast';
@@ -9,7 +9,6 @@ import TextScan from './pages/TextScan';
 import VoiceScan from './pages/VoiceScan';
 import Profile from './pages/Profile';
 import Feed from './pages/Feed';
-import MapPage from './pages/MapPage';
 import Login from './pages/Login';
 import Chat from './pages/Chat';
 import NotFound from './pages/NotFound';
@@ -48,7 +47,7 @@ function App() {
           <Route path="/voice" element={<VoiceScan />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/feed" element={<Feed />} />
-          <Route path="/map" element={<MapPage />} />
+          <Route path="/map" element={<Navigate to="/feed" replace />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Image, MessageSquare, Mic, User, ArrowRight, X, AlertTriangle, Shield, TrendingUp, Users } from 'lucide-react';
+import { Image, MessageSquare, Mic, ArrowRight, X, AlertTriangle, Shield, TrendingUp, Users } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import Card from '../components/ui/Card';
-import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
-import { useApp } from '../context/AppContext';
 import { useTranslation } from '../hooks/useTranslation';
-import { SCAN_HISTORY } from '../data/dummyScans';
 import { SCAM_FEED } from '../data/dummyScamFeed';
-import { formatTimeAgo, truncateText, isThreat, getScanTypeIcon } from '../utils/formatters';
 
 const ROTATE_KEYS = ['home.rotate.1', 'home.rotate.2', 'home.rotate.3', 'home.rotate.4'];
 
@@ -46,7 +42,6 @@ function RotatingText({ t }) {
 }
 
 export default function Home() {
-  const { scanHistory } = useApp();
   const { t } = useTranslation();
   const [showAlert, setShowAlert] = useState(true);
   const [animatedStats, setAnimatedStats] = useState(false);
@@ -55,7 +50,6 @@ export default function Home() {
     { path: '/image', titleKey: 'home.action.image.title', descKey: 'home.action.image.desc', icon: Image, accent: '#6C63FF', accentDim: 'rgba(108,99,255,0.12)' },
     { path: '/text', titleKey: 'home.action.text.title', descKey: 'home.action.text.desc', icon: MessageSquare, accent: '#0DCCB1', accentDim: 'rgba(13,204,177,0.12)' },
     { path: '/voice', titleKey: 'home.action.voice.title', descKey: 'home.action.voice.desc', icon: Mic, accent: '#F59E0B', accentDim: 'rgba(245,158,11,0.12)' },
-    { path: '/profile', titleKey: 'home.action.profile.title', descKey: 'home.action.profile.desc', icon: User, accent: '#22C55E', accentDim: 'rgba(34,197,94,0.12)' },
   ];
 
   const stats = [
@@ -70,7 +64,6 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [t]);
 
-  const recentScans = (scanHistory || SCAN_HISTORY).slice(0, 5);
   const criticalAlerts = SCAM_FEED.filter(a => a.severity === 'critical').length;
 
   return (
@@ -130,27 +123,12 @@ export default function Home() {
           {t('home.subtitle')}
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12">
-          <Link to="/image">
-            <Button variant="primary" size="lg">
-              <Image size={18} />
-              {t('home.scanImage')}
-            </Button>
-          </Link>
-          <Link to="/text">
-            <Button variant="secondary" size="lg">
-              <MessageSquare size={18} />
-              {t('home.scanMessage')}
-            </Button>
-          </Link>
-        </div>
-
         {/* Stats ticker */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10">
+        <div className="flex flex-row items-start justify-between gap-2 sm:gap-10 mt-10 max-w-xl mx-auto">
           {stats.map((stat, i) => (
             <div
               key={i}
-              className="flex items-center gap-2.5"
+              className="flex flex-col items-center gap-1.5 text-center flex-1"
               style={{
                 opacity: animatedStats ? 1 : 0,
                 transform: animatedStats ? 'translateY(0)' : 'translateY(10px)',
@@ -158,11 +136,11 @@ export default function Home() {
               }}
             >
               <stat.icon size={16} style={{ color: 'var(--accent)' }} />
-              <div className="text-left">
+              <div>
                 <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
                   {stat.value}
                 </span>
-                <span className="text-xs ml-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                <span className="block text-xs" style={{ color: 'var(--text-tertiary)' }}>
                   {stat.label}
                 </span>
               </div>
@@ -205,54 +183,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Recent Scan History */}
-      <section className="mb-12">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-            {t('home.recentScans')}
-          </h2>
-          <Link to="/feed" className="text-xs font-medium no-underline" style={{ color: 'var(--accent)' }}>
-            {t('home.viewAll')}
-          </Link>
-        </div>
-
-        <div className="space-y-2">
-          {recentScans.map((scan) => {
-            const threat = isThreat(scan.verdict);
-            return (
-              <div
-                key={scan.id}
-                className="flex items-center gap-3 p-3 rounded-xl transition-all duration-200"
-                style={{
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                <span className="text-lg w-8 text-center">
-                  {getScanTypeIcon(scan.type)}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>
-                    {scan.filename || truncateText(scan.text, 40)}
-                  </p>
-                  <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                    {formatTimeAgo(scan.timestamp)}
-                  </p>
-                </div>
-                <Badge type={threat ? 'threat' : 'safe'}>
-                  {threat ? t('common.threat') : t('common.safe')}
-                </Badge>
-                <span
-                  className="text-xs flex-shrink-0"
-                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)' }}
-                >
-                  {scan.confidence}%
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </section>
     </PageWrapper>
   );
 }
