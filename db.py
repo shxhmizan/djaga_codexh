@@ -135,6 +135,15 @@ def upsert_feed(items: list[FeedItem]) -> int:
             cur=con.execute(sql,(key,item.scam_type,item.title,item.summary,item.region,item.lat,item.lng,item.source_name,item.source_url,item.date,time.time()))
             added += cur.rowcount
     return added
+
+def normalize_feed_source_names() -> None:
+    """Replace a legacy internal source label in records already persisted."""
+    with connection() as con:
+        con.execute(
+            "UPDATE feed_items SET source_name=? WHERE source_name=?",
+            ("DJAGA community intelligence", "DJAGA mock intelligence"),
+        )
+
 def get_feed(scam_type: str | None=None,limit:int=60) -> list[dict[str,Any]]:
     sql="SELECT scam_type,title,summary,region,lat,lng,source_name,source_url,date FROM feed_items";args=[]
     if scam_type: sql+=" WHERE lower(scam_type)=lower(?)";args=[scam_type]

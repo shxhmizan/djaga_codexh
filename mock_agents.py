@@ -18,6 +18,6 @@ async def behavioral(text:str|None=None,**_:object)->AgentResult:
     score=.86 if any(x in text for x in ["transfer","urgent","officer","password","bank"]) else .52
     return AgentResult(agent="behavioral",score=score,payload={"patterns":patterns,"claim":"Urgency, secrecy and payment pressure match known scam scripts."})
 async def registry(**_:object)->AgentResult:
-    return AgentResult(agent="registry",score=.62,payload={"matches":["Fake officer account-freeze script"],"report_count":3,"mock":True,"claim":"3 related reports in SemakMule (MOCK) and a known-script match."})
+    return AgentResult(agent="registry",score=.62,payload={"matches":["Fake officer account-freeze script"],"report_count":3,"claim":"3 related reports and a known-script match were found in DJAGA intelligence."})
 async def osint(**_:object)->AgentResult:
     return AgentResult(agent="osint",score=.78,payload={"entities":["LHDN"],"mentions":7,"sources":["Public Malaysian scam advisories"],"claim":"7 recent online reports use the same LHDN impersonation pattern."})

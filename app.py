@@ -16,11 +16,10 @@ from assistant.chat import stream_reply
 from auth import current_user, login, logout, mydigital_login, register
 from config import settings
 from contracts import FeedItem, User, Verdict
-from db import create_check as db_create_check, get_check, get_feed, get_intelligence, get_verdict, init_db, list_checks, save_community_report, save_verdict, set_language, top_identifier_match, upsert_feed
+from db import create_check as db_create_check, get_check, get_feed, get_intelligence, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_verdict, set_language, top_identifier_match, upsert_feed
 from jobs.harvester import harvest
 from pipeline import manager
 from report_analyzer import analyze_report, coordinates_for
-from integrations.semakmule_mock import lookup as semakmule_lookup
 
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "frontend" / "dist"
@@ -38,6 +37,7 @@ async def startup() -> None:
     ensure_seeded()
     # Seed data is part of a usable zero-key installation, not an API-response mock.
     harvest(seed_only=True)
+    normalize_feed_source_names()
 
 
 def require_user(token: str | None) -> User:
@@ -251,8 +251,6 @@ def _identifier_result(user: User, value: str, log=None) -> dict:
         emit(f"Database match: identifier appears in DJAGA’s Top 10 {top_match['dataset'].replace('_', ' ')} data with {top_match['reports']} reports.")
     elif kind in {"phone", "bank_account"}:
         emit("Queried DJAGA’s persisted Top 10 identifier records; no exact match found.")
-    registry = semakmule_lookup(value)
-    emit("Queried the SemakMule adapter (MOCK — not a confirmed risk source).")
     matches = [item for item in get_feed(limit=100) if value.lower() in (item["title"] + item["summary"]).lower()]
     emit(f"Searched persisted DJAGA feed data; found {len(matches)} direct identifier mention(s).")
     report_count = int(top_match["reports"]) if top_match else len(matches)
@@ -261,16 +259,13 @@ def _identifier_result(user: User, value: str, log=None) -> dict:
     evidence = []
     if top_match:
         evidence.append({"agent": "registry", "claim": f"Exact Top 10 database match: {top_match['identifier']} has {top_match['reports']} recorded reports.", "weight_contribution": 0.85, "source": "djaga_database"})
-    evidence += [
-        {"agent": "registry", "claim": "SemakMule MOCK is shown for interface transparency only; no official portal was queried.", "weight_contribution": 0.0, "mock": True},
-        {"agent": "osint", "claim": f"DJAGA feed found {len(matches)} direct identifier match(es).", "weight_contribution": 0.15 if top_match else 1.0},
-    ]
+    evidence.append({"agent": "osint", "claim": f"DJAGA feed found {len(matches)} direct identifier match(es).", "weight_contribution": 0.15 if top_match else 1.0})
     check_id = str(uuid.uuid4())
     db_create_check(check_id, user.id, "message")
     verdict = Verdict(risk=risk, level=level, kind="message", evidence=evidence, excerpt=f"Identifier check: {kind}", flagged_phrases=[])
     save_verdict(check_id, verdict)
     emit("Finalised the database-backed identifier risk verdict.", "done")
-    return {"check_id": check_id, "kind": kind, "risk": risk, "level": level, "registry": registry, "top_match": top_match, "feed_matches": matches[:3], "evidence": evidence}
+    return {"check_id": check_id, "kind": kind, "risk": risk, "level": level, "top_match": top_match, "feed_matches": matches[:3], "evidence": evidence}
 
 
 @app.post("/api/scam-check/identifier")

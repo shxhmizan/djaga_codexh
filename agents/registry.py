@@ -1,8 +1,7 @@
 """Known-script and identifier registry checks.
 
-SemakMule remains deliberately mocked: the public portal is CAPTCHA-protected
-and has no API. Script similarity is real, using Databricks Vector Search when
-configured or DJAGA's persisted feed/community reports otherwise.
+Script similarity uses Databricks Vector Search when configured or DJAGA's
+persisted feed and community reports otherwise.
 """
 from __future__ import annotations
 
@@ -12,7 +11,6 @@ import mock_agents
 from config import settings
 from contracts import AgentResult
 from db import registry_candidates
-from integrations.semakmule_mock import lookup
 from integrations.vector_search_client import search_scripts
 
 
@@ -45,16 +43,14 @@ class RegistryAgent:
         else:
             matches = registry_candidates(text)
             source = "djaga_persisted_intelligence"
-        semak = lookup(_identifier(text) or text[:80])
         score = _score(matches)
-        report_count = len(matches) + int(semak.get("report_count", 0))
+        report_count = len(matches)
         descriptions = [str(item.get("title") or item.get("text") or item.get("summary") or "Known scam-script match") for item in matches[:3]]
         claim = (
-            f"{len(matches)} related record{'s' if len(matches) != 1 else ''} found in DJAGA intelligence; "
-            f"SemakMule is shown as MOCK with {semak.get('report_count', 0)} seeded reports."
+            f"{len(matches)} related record{'s' if len(matches) != 1 else ''} found in DJAGA intelligence."
         )
         return AgentResult(
             agent="registry",
             score=score,
-            payload={"matches": descriptions, "report_count": report_count, "mock": True, "semakmule": semak, "source": source, "claim": claim},
+            payload={"matches": descriptions, "report_count": report_count, "source": source, "claim": claim},
         )

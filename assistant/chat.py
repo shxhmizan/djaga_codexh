@@ -15,7 +15,7 @@ def mock_reply(user:User,message:str)->tuple[str,str|None]:
  if any(word in q for word in ('number','lhdn','bank','entity','check')):
   entity='LHDN' if 'lhdn' in q else message
   result=check_entity(entity)
-  return f"I checked {entity}. SemakMule is clearly marked MOCK and has {result['registry']['report_count']} seeded matching reports; I also found {len(result['reports'])} relevant feed items. Do not share OTPs or transfer money before independently verifying.","check_entity"
+  return f"I checked {entity}. DJAGA intelligence found {result['registry']['report_count']} related records and {len(result['reports'])} relevant feed items. Do not share OTPs or transfer money before independently verifying.","check_entity"
  if 'past check' in q or 'history' in q:
   checks=user_checks(user.id);return f"You have {len(checks)} saved checks. Your newest check is {checks[0]['level'] if checks and checks[0].get('level') else 'still processing'}.","get_user_checks"
  if 'verdict' in q:

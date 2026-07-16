@@ -42,7 +42,7 @@ const translations = {
 
   // ─── Feed Page ───
   'feed.title': { en: 'Scam Intelligence Feed', ms: 'Suapan Perisikan Penipuan' },
-  'feed.subtitle': { en: 'Live alerts from DJAGA community + PDRM + Semak Mule', ms: 'Amaran langsung dari komuniti DJAGA + PDRM + Semak Mule' },
+  'feed.subtitle': { en: 'Live alerts from DJAGA community and public safety sources', ms: 'Amaran langsung daripada komuniti DJAGA dan sumber keselamatan awam' },
   'feed.updated': { en: 'Updated 3 minutes ago', ms: 'Dikemaskini 3 minit lepas' },
   'feed.all': { en: 'All', ms: 'Semua' },
   'feed.critical': { en: 'Critical', ms: 'Kritikal' },
