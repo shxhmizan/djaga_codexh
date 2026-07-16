@@ -1,0 +1,204 @@
+import { useState, useEffect } from 'react';
+import { Shield, AlertTriangle, RotateCcw, Download } from 'lucide-react';
+import ConfidenceGauge from './ConfidenceGauge';
+import KeywordPills from './KeywordPills';
+import ParticleBurst from './ParticleBurst';
+import Badge from '../ui/Badge';
+import Button from '../ui/Button';
+import { isThreat, getVerdictLabel, getVerdictEmoji } from '../../utils/formatters';
+
+export default function ResultCard({ result, onReset, onDownloadReport }) {
+  const [showCard, setShowCard] = useState(false);
+  const [showGauge, setShowGauge] = useState(false);
+  const [showHighlights, setShowHighlights] = useState(false);
+  const [showParticles, setShowParticles] = useState(false);
+  const [flashColor, setFlashColor] = useState(null);
+
+  const threat = isThreat(result.verdict);
+  const color = threat ? 'var(--threat)' : 'var(--safe)';
+  const verdictText = result.verdict === 'fake' ? 'FAKE' : result.verdict === 'scam' ? 'SCAM' : result.verdict === 'real' ? 'REAL' : 'SAFE';
+
+  // Timed reveal sequence
+  useEffect(() => {
+    // Flash
+    setFlashColor(threat ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)');
+    const t1 = setTimeout(() => setFlashColor(null), 200);
+    // Card
+    const t2 = setTimeout(() => setShowCard(true), 200);
+    // Gauge
+    const t3 = setTimeout(() => setShowGauge(true), 400);
+    // Highlights
+    const t4 = setTimeout(() => setShowHighlights(true), 600);
+    // Particles
+    const t5 = setTimeout(() => setShowParticles(true), 800);
+
+    return () => {
+      [t1, t2, t3, t4, t5].forEach(clearTimeout);
+    };
+  }, [result, threat]);
+
+  const highlights = result.highlights || result.matchedKeywords || [];
+  const isTextScan = result.type === 'text';
+
+  return (
+    <div className="relative">
+      {/* Screen flash */}
+      {flashColor && (
+        <div
+          className="fixed inset-0 z-[50] pointer-events-none"
+          style={{
+            background: flashColor,
+            animation: 'screenFlash 0.3s ease forwards',
+          }}
+        />
+      )}
+
+      {/* Particle burst */}
+      <ParticleBurst type={threat ? 'threat' : 'safe'} trigger={showParticles} />
+
+      {/* Result card */}
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{
+          opacity: showCard ? 1 : 0,
+          transform: showCard ? 'scale(1)' : 'scale(0.95)',
+          transition: 'all 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+          border: `1px solid ${threat ? 'var(--threat-border)' : 'var(--safe-border)'}`,
+          background: threat ? 'var(--threat-dim)' : 'var(--safe-dim)',
+          boxShadow: `0 0 60px ${threat ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)'}`,
+        }}
+      >
+        {/* Top badge bar */}
+        <div
+          className="px-5 py-3 flex items-center justify-center gap-2 text-sm font-semibold"
+          style={{
+            background: threat ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)',
+            color: threat ? '#FCA5A5' : '#86EFAC',
+            fontFamily: 'var(--font-display)',
+            borderRadius: '16px 16px 0 0',
+          }}
+        >
+          {getVerdictEmoji(result.verdict)} {threat ? 'DEEPFAKE DETECTED' : result.type === 'text' ? (result.verdict === 'scam' ? 'SCAM DETECTED' : 'MESSAGE SAFE') : 'AUTHENTIC IMAGE'}
+        </div>
+
+        <div className="p-6">
+          {/* Verdict text */}
+          <div className="text-center mb-6">
+            <h2
+              className="text-5xl font-extrabold mb-1"
+              style={{
+                fontFamily: 'var(--font-display)',
+                color: threat ? '#EF4444' : '#22C55E',
+                letterSpacing: '-1px',
+              }}
+            >
+              {verdictText}
+            </h2>
+          </div>
+
+          {/* Confidence gauge */}
+          {showGauge && (
+            <div className="flex justify-center mb-6">
+              <ConfidenceGauge
+                value={result.confidence}
+                color={color}
+                size={140}
+              />
+            </div>
+          )}
+
+          {/* Scam type badge (text scans) */}
+          {isTextScan && result.scamType && (
+            <div className="flex justify-center mb-4">
+              <Badge type="warning">{result.scamType}</Badge>
+            </div>
+          )}
+
+          {/* Keywords (text scans) */}
+          {isTextScan && result.matchedKeywords && result.matchedKeywords.length > 0 && showHighlights && (
+            <div className="mb-5">
+              <h4
+                className="text-xs uppercase tracking-wider mb-3"
+                style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', letterSpacing: '1.5px' }}
+              >
+                Suspicious patterns found:
+              </h4>
+              <KeywordPills keywords={result.matchedKeywords} type="threat" />
+            </div>
+          )}
+
+          {/* Highlights (image/voice scans) */}
+          {!isTextScan && highlights.length > 0 && showHighlights && (
+            <div className="mb-5">
+              <h4
+                className="text-xs uppercase tracking-wider mb-3"
+                style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', letterSpacing: '1.5px' }}
+              >
+                What the AI detected:
+              </h4>
+              <div className="space-y-2">
+                {highlights.map((h, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-2.5 text-sm"
+                    style={{
+                      color: 'var(--text-secondary)',
+                      opacity: showHighlights ? 1 : 0,
+                      transform: showHighlights ? 'translateX(0)' : 'translateX(10px)',
+                      transition: `all 0.3s ease ${i * 80}ms`,
+                    }}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                      style={{ background: threat ? 'var(--threat)' : 'var(--safe)' }}
+                    />
+                    {h}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Warning box */}
+          <div
+            className="rounded-xl p-4 mb-5"
+            style={{
+              background: threat ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
+              borderLeft: `3px solid ${threat ? 'var(--threat)' : 'var(--safe)'}`,
+            }}
+          >
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={16} style={{ color: threat ? 'var(--warning)' : 'var(--safe)', flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {threat
+                    ? (isTextScan ? 'Jangan transfer wang. Hubungi PDRM di 999.' : 'Jangan percaya imej ini.')
+                    : (isTextScan ? 'Mesej ini kelihatan selamat.' : 'Imej ini adalah asli.')
+                  }
+                </p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                  {threat
+                    ? (isTextScan ? 'Do not transfer money. Report to PDRM at 999.' : 'Do not trust this media.')
+                    : (isTextScan ? 'This message appears to be safe.' : 'This image is authentic.')
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-3">
+            <Button variant="ghost" size="md" onClick={onReset} className="flex-1">
+              <RotateCcw size={16} />
+              Scan Again
+            </Button>
+            <Button variant="secondary" size="md" onClick={onDownloadReport} className="flex-1">
+              <Download size={16} />
+              Download Report
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
