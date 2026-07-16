@@ -4,6 +4,7 @@ pydantic
 python-multipart
 python-dotenv
 httpx
+pypdf
 langgraph
 psycopg[binary]
 pytest

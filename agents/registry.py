@@ -7,15 +7,19 @@ from __future__ import annotations
 
 import re
 
-import mock_agents
 from config import settings
 from contracts import AgentResult
-from db import registry_candidates
+from db import registry_candidates, top_identifier_match
 from integrations.vector_search_client import search_scripts
 
 
 def _identifier(text: str) -> str | None:
     match = re.search(r"(?:\+?60|0)\d[\d\s-]{7,12}", text)
+    return match.group(0) if match else None
+
+
+def _bank_account(text: str) -> str | None:
+    match = re.search(r"(?<!\d)\d{8,18}(?!\d)", text.replace(" ", "").replace("-", ""))
     return match.group(0) if match else None
 
 
@@ -32,12 +36,24 @@ def _score(matches: list[dict]) -> float:
 class RegistryAgent:
     async def run(self, **kwargs):
         text = (kwargs.get("text") or "").strip()
-        if settings.agent_mode_for("registry") != "real":
-            return await mock_agents.registry(text=text)
+        phone = _identifier(text)
+        bank_account = None if phone else _bank_account(text)
+        top_match = top_identifier_match("phone", phone) if phone else top_identifier_match("bank_account", bank_account) if bank_account else None
+        if top_match:
+            return AgentResult(
+                agent="registry",
+                score=0.98,
+                payload={
+                    "matches": [top_match["identifier"]],
+                    "report_count": int(top_match["reports"]),
+                    "source": "djaga_top10_intelligence",
+                    "claim": f"Exact Top 10 database match: {top_match['identifier']} has {top_match['reports']} recorded reports.",
+                },
+            )
 
-        # An index is a production optimisation. The local repository remains
-        # a real, useful corpus when a workspace index is not configured.
-        if settings.vs_endpoint and settings.vs_index:
+        # An index is a production optimisation. The persisted database is
+        # always queried so every scan has a real local intelligence signal.
+        if settings.agent_mode_for("registry") == "real" and settings.vs_endpoint and settings.vs_index:
             matches = await search_scripts(text)
             source = "databricks_vector_search"
         else:

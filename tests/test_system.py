@@ -57,6 +57,21 @@ def test_image_and_voice_upload_paths_emit_real_pipeline_events():
    stream=client.get(f'/api/checks/{sid}/stream')
    assert 'event: trace' in stream.text and 'event: risk' in stream.text
 
+def test_scam_check_upload_and_top_identifier_use_message_pipeline():
+ with TestClient(app) as client:
+  import uuid,time
+  client.post('/api/auth/register',json={'email':f'{uuid.uuid4()}@example.com','password':'longpassword','name':'Test User'})
+  sid=client.post('/api/checks',json={'kind':'message'}).json()['session_id']
+  upload={'file': ('conversation.txt', b'Please transfer RM3000 now to 0104269914. This is urgent.', 'text/plain')}
+  assert client.post(f'/api/checks/{sid}/analyze',files=upload).status_code==200
+  for _ in range(30):
+   verdict=client.get(f'/api/checks/{sid}/verdict').json()
+   if verdict: break
+   time.sleep(.02)
+  registry=[item for item in verdict['evidence'] if item['agent']=='registry'][0]
+  assert verdict['level']=='danger'
+  assert 'Top 10 database match' in registry['claim']
+
 def test_chat_and_agent_failure_do_not_break_a_check(monkeypatch):
  from agents import _agents
  class BrokenOSINT:

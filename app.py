@@ -6,6 +6,7 @@ import json
 import re
 import time
 import uuid
+from io import BytesIO
 from pathlib import Path
 
 from fastapi import Cookie, FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -18,6 +19,7 @@ from config import settings
 from contracts import FeedItem, User, Verdict
 from db import create_check as db_create_check, get_check, get_feed, get_intelligence, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_verdict, set_language, top_identifier_match, upsert_feed
 from jobs.harvester import harvest
+from integrations.openrouter_client import extract_text_from_image
 from pipeline import manager
 from report_analyzer import analyze_report, coordinates_for
 
@@ -118,7 +120,15 @@ async def analyze_check(
         body = await request.json()
         text = body.get("text", text)
     data = await file.read() if file else None
+    if data is not None and len(data) > 10 * 1024 * 1024:
+        raise HTTPException(413, "Upload a file smaller than 10 MB.")
     kind = check["kind"]
+    if kind == "message" and file:
+        try:
+            extracted = await _extract_message_upload(data or b"", file)
+        except RuntimeError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        text = "\n\n".join(part for part in [text or "", extracted] if part.strip())
     if kind == "message" and not (text or "").strip():
         raise HTTPException(422, "Message checks require text")
     if kind == "image":
@@ -129,6 +139,29 @@ async def analyze_check(
             raise HTTPException(415, "Voice checks require an M4A, MP3, WAV, WebM, or OGG upload")
     await manager.analyze(session_id, user.id, text=text, blob=data, content_type=file.content_type if file else None)
     return {"ok": True, "session_id": session_id}
+
+
+async def _extract_message_upload(data: bytes, file: UploadFile) -> str:
+    """Return scan text from a conversation screenshot or document upload."""
+    name = (file.filename or "").lower()
+    content_type = (file.content_type or "").lower()
+    if content_type in {"image/jpeg", "image/png", "image/webp"}:
+        return await extract_text_from_image(data, content_type)
+    if content_type == "application/pdf" or name.endswith(".pdf"):
+        try:
+            from pypdf import PdfReader
+            text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(data)).pages)
+        except Exception as exc:
+            raise RuntimeError("DJAGA could not read text from that PDF.") from exc
+        if not text.strip():
+            raise RuntimeError("No selectable text was found in that PDF. Upload a screenshot instead.")
+        return text[:12000]
+    if content_type.startswith("text/") or name.endswith((".txt", ".md", ".csv", ".json", ".log")):
+        text = data.decode("utf-8", errors="replace").strip()
+        if not text:
+            raise RuntimeError("That file did not contain readable text.")
+        return text[:12000]
+    raise RuntimeError("Upload a PNG, JPG, WebP, PDF, TXT, CSV, JSON, or Markdown conversation file.")
 
 
 @app.get("/api/checks")

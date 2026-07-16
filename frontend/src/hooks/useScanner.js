@@ -41,7 +41,10 @@ export function useScanner() {
         throw new Error('Choose a file or enter a message before starting a scan.');
       }
       const analyzed = await fetch(`/api/checks/${session_id}/analyze`, { method: 'POST', credentials: 'include', headers, body });
-      if (!analyzed.ok) throw new Error('Could not submit check');
+      if (!analyzed.ok) {
+        const failure = await analyzed.json().catch(() => ({}));
+        throw new Error(failure.detail || 'Could not submit check');
+      }
       const stream = new EventSource(`/api/checks/${session_id}/stream`);
       streamRef.current = stream;
       const recordEvent = (event) => {

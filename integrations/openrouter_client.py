@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import base64
 
 import httpx
 
@@ -73,3 +74,38 @@ async def classify_scam_text(text: str) -> AgentResult:
         return _normalise(content)
     except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
         raise RuntimeError("OpenRouter did not return behavioral JSON") from exc
+
+
+async def extract_text_from_image(image: bytes, content_type: str) -> str:
+    """Transcribe visible message text from a user-uploaded screenshot.
+
+    The model is asked only to transcribe. Scam classification still happens in
+    the Behavioral agent, and the image bytes are discarded after this request.
+    """
+    if not settings.openrouter_api_key:
+        raise RuntimeError("Image conversation uploads require OPENROUTER_API_KEY for text extraction.")
+    encoded = base64.b64encode(image).decode("ascii")
+    data_url = f"data:{content_type};base64,{encoded}"
+    messages = [
+        {"role": "system", "content": "Transcribe the visible conversation or message text exactly. Return plain text only. Do not explain or classify it."},
+        {"role": "user", "content": [
+            {"type": "text", "text": "Extract every readable message, sender name, phone number, bank account, URL, and amount from this screenshot."},
+            {"type": "image_url", "image_url": {"url": data_url}},
+        ]},
+    ]
+    headers = {"Authorization": f"Bearer {settings.openrouter_api_key}", "Content-Type": "application/json"}
+    async with httpx.AsyncClient(timeout=60) as client:
+        response = await client.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json={"model": settings.openrouter_vision_model, "messages": messages, "temperature": 0},
+        )
+        response.raise_for_status()
+        data = response.json()
+    try:
+        text = str(data["choices"][0]["message"]["content"]).strip()
+    except (KeyError, IndexError, TypeError) as exc:
+        raise RuntimeError("The image text extraction service returned no transcription.") from exc
+    if not text:
+        raise RuntimeError("No readable conversation text was found in this image.")
+    return text[:12000]
