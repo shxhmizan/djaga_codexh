@@ -47,6 +47,7 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS feed_items (id INTEGER PRIMARY KEY AUTOINCREMENT,dedupe_key TEXT UNIQUE NOT NULL,scam_type TEXT NOT NULL,title TEXT NOT NULL,summary TEXT NOT NULL,region TEXT NOT NULL,lat REAL NOT NULL,lng REAL NOT NULL,source_name TEXT NOT NULL,source_url TEXT NOT NULL,date TEXT NOT NULL,created_at REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT,user_id TEXT NOT NULL,role TEXT NOT NULL,content TEXT NOT NULL,created_at REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS intelligence_records (kind TEXT NOT NULL,record_key TEXT NOT NULL,payload TEXT NOT NULL,updated_at REAL NOT NULL,PRIMARY KEY (kind,record_key));
+        CREATE TABLE IF NOT EXISTS community_reports (id TEXT PRIMARY KEY,user_id TEXT NOT NULL,description TEXT NOT NULL,submitted_type TEXT,phone_link TEXT,location TEXT,occurred_when TEXT,consent_public INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL,ai_type TEXT NOT NULL,ai_title TEXT NOT NULL,ai_summary TEXT NOT NULL,confidence REAL NOT NULL,entities TEXT NOT NULL DEFAULT '[]',created_at REAL NOT NULL);
         """)
         # Migrate the very early prototype schema in-place for existing local installs.
         user_columns={row['name'] for row in con.execute("PRAGMA table_info(users)").fetchall()}
@@ -168,3 +169,27 @@ def intelligence_count() -> int:
     with connection() as con:
         row = con.execute("SELECT COUNT(*) AS total FROM intelligence_records").fetchone()
     return int(row["total"])
+
+
+def save_community_report(report: dict[str, Any]) -> None:
+    with connection() as con:
+        con.execute(
+            "INSERT INTO community_reports (id,user_id,description,submitted_type,phone_link,location,occurred_when,consent_public,status,ai_type,ai_title,ai_summary,confidence,entities,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                report["id"], report["user_id"], report["description"], report.get("submitted_type"),
+                report.get("phone_link"), report.get("location"), report.get("occurred_when"), report["consent_public"],
+                report["status"], report["ai_type"], report["ai_title"], report["ai_summary"],
+                report["confidence"], json.dumps(report["entities"]), report["created_at"],
+            ),
+        )
+
+
+def get_community_report(report_id: str, user_id: str) -> dict[str, Any] | None:
+    with connection() as con:
+        row = con.execute("SELECT * FROM community_reports WHERE id=? AND user_id=?", (report_id, user_id)).fetchone()
+    if not row:
+        return None
+    result = dict(row)
+    if isinstance(result.get("entities"), str):
+        result["entities"] = json.loads(result["entities"])
+    return result

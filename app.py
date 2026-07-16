@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+import uuid
 from pathlib import Path
 
 from fastapi import Cookie, FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -13,10 +14,11 @@ from fastapi.staticfiles import StaticFiles
 from assistant.chat import stream_reply
 from auth import current_user, login, logout, mydigital_login, register
 from config import settings
-from contracts import User
-from db import get_check, get_feed, get_intelligence, get_verdict, init_db, list_checks, set_language
+from contracts import FeedItem, User
+from db import get_check, get_feed, get_intelligence, get_verdict, init_db, list_checks, save_community_report, set_language, upsert_feed
 from jobs.harvester import harvest
 from pipeline import manager
+from report_analyzer import analyze_report, coordinates_for
 
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "frontend" / "dist"
@@ -171,6 +173,44 @@ def api_intelligence(djaga_session: str | None = Cookie(None)):
 async def refresh_feed(djaga_session: str | None = Cookie(None)):
     require_user(djaga_session)
     return await asyncio.to_thread(harvest)
+
+
+@app.post("/api/reports/analyze")
+def analyze_community_report(payload: dict, djaga_session: str | None = Cookie(None)):
+    require_user(djaga_session)
+    description = str(payload.get("description", "")).strip()
+    if len(description) < 12:
+        raise HTTPException(422, "Please provide a little more detail about the scam.")
+    return analyze_report(description, payload.get("submitted_type"), payload.get("phone_link"))
+
+
+@app.post("/api/reports")
+def submit_community_report(payload: dict, djaga_session: str | None = Cookie(None)):
+    user = require_user(djaga_session)
+    description = str(payload.get("description", "")).strip()
+    if len(description) < 12:
+        raise HTTPException(422, "Please provide a little more detail about the scam.")
+    consent_public = bool(payload.get("consent_public"))
+    analysis = analyze_report(description, payload.get("submitted_type"), payload.get("phone_link"))
+    report_id = str(uuid.uuid4())
+    location = str(payload.get("location", "")).strip()
+    occurred_when = str(payload.get("occurred_when", "")).strip()
+    save_community_report({
+        "id": report_id, "user_id": user.id, "description": description,
+        "submitted_type": payload.get("submitted_type"), "phone_link": str(payload.get("phone_link", "")).strip(),
+        "location": location, "occurred_when": occurred_when, "consent_public": consent_public,
+        "status": "community_unverified", "ai_type": analysis["type"], "ai_title": analysis["title"],
+        "ai_summary": analysis["summary"], "confidence": analysis["confidence"], "entities": analysis["entities"],
+        "created_at": time.time(),
+    })
+    if consent_public:
+        lat, lng, region = coordinates_for(location)
+        upsert_feed([FeedItem(
+            scam_type=analysis["type"], title=analysis["title"], summary=analysis["summary"], region=region,
+            lat=lat, lng=lng, source_name="DJAGA community report · AI classified", source_url=f"https://djaga.local/community/{report_id}",
+            date=time.strftime("%Y-%m-%d"),
+        )])
+    return {"id": report_id, "analysis": analysis, "status": "community_unverified", "published": consent_public}
 
 
 @app.post("/api/chat")

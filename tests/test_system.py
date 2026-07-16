@@ -14,6 +14,10 @@ def test_auth_feed_and_mock_pipeline():
   intelligence=client.get('/api/intelligence'); assert intelligence.status_code==200
   assert len(intelligence.json()['map_points']) >= 90
   assert len(intelligence.json()['insights']) >= 6
+  analysis=client.post('/api/reports/analyze', json={'description':'A caller claiming to be PDRM asked me to transfer money urgently.'})
+  assert analysis.status_code == 200 and analysis.json()['type'] == 'macau_scam'
+  report=client.post('/api/reports', json={'description':'A caller claiming to be PDRM asked me to transfer money urgently.', 'location':'Ipoh', 'consent_public':True})
+  assert report.status_code == 200 and report.json()['published'] is True
   started=client.post('/api/checks',json={'kind':'message'});assert started.status_code==200
   sid=started.json()['session_id'];assert client.post(f'/api/checks/{sid}/analyze',json={'text':'Transfer now'}).status_code==200
   import time

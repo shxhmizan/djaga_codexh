@@ -7,7 +7,7 @@ import LiveStats from './LiveStats';
 import { useApp } from '../../context/AppContext';
 import useIntelligence from '../../hooks/useIntelligence';
 
-export default function ScamHeatmap() {
+export default function ScamHeatmap({ refreshKey = 0 }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
@@ -31,7 +31,7 @@ export default function ScamHeatmap() {
       const points = items.map((item, index) => ({ lat: item.lat, lng: item.lng, type: typeFor(item.scam_type), count: 1, area: item.region, date: item.date, title: item.title, id: `${item.region}-${index}` }));
       setFeedPoints(points);
     }).catch(() => {});
-  }, []);
+  }, [refreshKey]);
   const requestLocation = () => {
     if (!navigator.geolocation) { setLocationError('Location is not supported by this browser.'); return; }
     setLocating(true); setLocationError('');

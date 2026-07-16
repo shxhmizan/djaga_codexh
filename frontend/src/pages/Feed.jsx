@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Sparkles } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import ScamFeed from '../components/feed/ScamFeed';
 import Button from '../components/ui/Button';
@@ -14,6 +14,14 @@ export default function Feed() {
   const [reportType, setReportType] = useState('macau_scam');
   const [reportDescription, setReportDescription] = useState('');
   const [reportPhone, setReportPhone] = useState('');
+  const [reportLocation, setReportLocation] = useState('');
+  const [occurredWhen, setOccurredWhen] = useState('today');
+  const [consentPublic, setConsentPublic] = useState(false);
+  const [analysis, setAnalysis] = useState(null);
+  const [reportError, setReportError] = useState('');
+  const [analysing, setAnalysing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [feedRefreshKey, setFeedRefreshKey] = useState(0);
   const [liveAlerts, setLiveAlerts] = useState([]);
   const { addToast } = useApp();
   const { t } = useTranslation();
@@ -22,7 +30,7 @@ export default function Feed() {
     document.title = `${t('feed.title')} — DJAGA`;
   }, [t]);
 
-  useEffect(() => {
+  const loadFeed = useCallback(() => {
     fetch('/api/feed', { credentials: 'include' })
       .then(response => response.json())
       .then(items => setLiveAlerts(items.map((item, index) => ({
@@ -34,13 +42,35 @@ export default function Feed() {
       })))).catch(() => setLiveAlerts([]));
   }, []);
 
+  useEffect(() => { loadFeed(); }, [loadFeed, feedRefreshKey]);
+
   const filteredAlerts = liveAlerts;
 
-  const handleSubmitReport = () => {
-    setShowReportModal(false);
-    setReportDescription('');
-    setReportPhone('');
-    addToast({ type: 'success', title: t('feed.reportTitle'), message: t('feed.reportSuccess') });
+  const resetReport = () => {
+    setShowReportModal(false); setReportDescription(''); setReportPhone(''); setReportLocation('');
+    setOccurredWhen('today'); setConsentPublic(false); setAnalysis(null); setReportError('');
+  };
+
+  const handleAnalyzeReport = async () => {
+    setReportError(''); setAnalysing(true);
+    try {
+      const response = await fetch('/api/reports/analyze', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: reportDescription, submitted_type: reportType === 'unsure' ? null : reportType, phone_link: reportPhone }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || 'Unable to analyse this report.');
+      setAnalysis(result);
+    } catch (error) { setReportError(error.message); } finally { setAnalysing(false); }
+  };
+
+  const handleSubmitReport = async () => {
+    if (!analysis) return handleAnalyzeReport();
+    setReportError(''); setSubmitting(true);
+    try {
+      const response = await fetch('/api/reports', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: reportDescription, submitted_type: reportType === 'unsure' ? null : reportType, phone_link: reportPhone, location: reportLocation, occurred_when: occurredWhen, consent_public: consentPublic }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || 'Unable to submit this report.');
+      loadFeed(); setFeedRefreshKey(key => key + 1); resetReport();
+      addToast({ type: 'success', title: 'Report saved', message: result.published ? 'Added to the community intelligence feed as unverified.' : 'Saved privately to your account.' });
+    } catch (error) { setReportError(error.message); } finally { setSubmitting(false); }
   };
 
   return (
@@ -67,7 +97,7 @@ export default function Feed() {
               <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Explore locations, signals, and emerging scam patterns alongside the live feed.</p>
             </div>
           </div>
-          <ScamHeatmap />
+          <ScamHeatmap refreshKey={feedRefreshKey} />
         </section>
 
         {/* Feed */}
@@ -80,7 +110,7 @@ export default function Feed() {
         {/* Report button */}
         <div className="fixed bottom-24 right-4 lg:bottom-8 lg:right-8 z-50">
           <button
-            onClick={() => setShowReportModal(true)}
+            onClick={() => { setShowReportModal(true); setReportError(''); }}
             className="flex items-center gap-2 px-5 py-3 rounded-full font-medium text-sm shadow-lg transition-all duration-200 hover:-translate-y-[1px] min-h-[48px]"
             style={{
               background: 'var(--accent)',
@@ -96,7 +126,7 @@ export default function Feed() {
         </div>
 
         {/* Report Modal */}
-        <Modal isOpen={showReportModal} onClose={() => setShowReportModal(false)} title={t('feed.reportTitle')}>
+        <Modal isOpen={showReportModal} onClose={resetReport} title={t('feed.reportTitle')}>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
@@ -113,6 +143,7 @@ export default function Feed() {
                   fontSize: '16px',
                 }}
               >
+                <option value="unsure">I'm not sure — let DJAGA classify it</option>
                 <option value="macau_scam">Macau Scam</option>
                 <option value="phishing">Phishing</option>
                 <option value="deepfake">Deepfake</option>
@@ -130,7 +161,10 @@ export default function Feed() {
               value={reportDescription}
               onChange={(e) => setReportDescription(e.target.value)}
               placeholder={t('feed.descPlaceholder')}
+              maxLength={1200}
+              charCount
             />
+            <p className="-mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>Do not include passwords, TAC/OTP codes, or full bank-account details.</p>
 
             <Input
               label={t('feed.phoneLabel')}
@@ -139,14 +173,37 @@ export default function Feed() {
               placeholder={t('feed.phonePlaceholder')}
             />
 
+            <Input label="Approximate location (optional)" value={reportLocation} onChange={(e) => setReportLocation(e.target.value)} placeholder="e.g. Ipoh, Perak" />
+
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>When did this happen?</label>
+              <select value={occurredWhen} onChange={(e) => setOccurredWhen(e.target.value)} className="w-full h-12 px-4 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: '16px' }}>
+                <option value="today">Today</option><option value="this_week">This week</option><option value="earlier">Earlier</option>
+              </select>
+            </div>
+
+            {analysis && <div className="rounded-xl p-4" style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)' }}>
+              <div className="flex items-center gap-2 mb-2" style={{ color: 'var(--accent)' }}><Sparkles size={16}/><span className="text-xs font-semibold uppercase tracking-wide">DJAGA analysis</span></div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{analysis.title}</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Classified with {Math.round(analysis.confidence * 100)}% confidence. You can still correct the scam type above.</p>
+            </div>}
+
+            <label className="flex items-start gap-3 text-xs leading-relaxed cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+              <input type="checkbox" checked={consentPublic} onChange={(e) => setConsentPublic(e.target.checked)} className="mt-0.5" style={{ accentColor: 'var(--accent)' }} />
+              <span>I understand this report may appear anonymously in DJAGA’s community intelligence feed after AI classification. It will be labelled as unverified.</span>
+            </label>
+
+            {reportError && <p className="text-sm" style={{ color: 'var(--threat)' }}>{reportError}</p>}
+
             <Button
               variant="primary"
               fullWidth
               size="lg"
               onClick={handleSubmitReport}
-              disabled={!reportDescription.trim()}
+              loading={analysing || submitting}
+              disabled={reportDescription.trim().length < 12 || !consentPublic}
             >
-              {t('feed.submitReport')}
+              {analysis ? 'Submit community report' : 'Analyse report'}
             </Button>
           </div>
         </Modal>
