@@ -30,20 +30,24 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 480
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[150] flex items-center justify-center p-4"
+      className="fixed inset-0 flex items-center justify-center p-4"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
       style={{
+        zIndex: 2000, // Leaflet panes/controls sit above normal app content.
         background: 'rgba(10,10,15,0.8)',
         backdropFilter: 'blur(8px)',
         animation: 'fadeIn 0.2s ease',
       }}
     >
       <div
-        className="w-full rounded-2xl overflow-hidden"
+        className="w-full rounded-2xl overflow-hidden flex flex-col"
         style={{
           maxWidth,
+          maxHeight: 'calc(100dvh - 2rem)',
+          position: 'relative',
+          zIndex: 2001,
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border)',
           boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
@@ -65,7 +69,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 480
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5">
+        <div className="px-6 py-5 overflow-y-auto">
           {children}
         </div>
       </div>
