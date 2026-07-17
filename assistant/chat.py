@@ -58,8 +58,9 @@ async def _reason_about_attempt(message: str) -> tuple[str, str]:
 
 async def assistant_reply(user:User,message:str)->tuple[str,str|None]:
  q=message.lower()
- if any(word in q for word in ('ipoh','feed','lately','latest')):
-  found=search_feed('Ipoh') if 'ipoh' in q else search_feed('')
+ region = next((name for name in ('ipoh', 'sabah', 'sarawak', 'kuching', 'kota kinabalu', 'kuala lumpur', 'penang', 'manjung', 'alor setar') if name in q), '')
+ if any(word in q for word in ('ipoh','sabah','sarawak','kuching','kota kinabalu','feed','lately','latest','report')):
+  found=search_feed(region.title() if region else '')
   summary='; '.join(f"{x['title']} in {x['region']}" for x in found[:3]) or 'No matching alerts are in your current feed.'
   return f"I checked DJAGA’s stored scam feed: {summary}. Treat urgent payment requests as suspicious and verify through an official number.","search_feed"
  if any(any(word in q for word in words) for words in _SCAM_SIGNALS.values()):

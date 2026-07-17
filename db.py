@@ -180,10 +180,20 @@ def normalize_feed_source_names() -> None:
 def get_feed(scam_type: str | None=None,limit:int=60) -> list[dict[str,Any]]:
     # Do not surface records whose classification is explicitly unclear in
     # the public alerts list.  They remain stored for moderation/audit use.
-    sql="SELECT scam_type,title,summary,region,lat,lng,source_name,source_url,date FROM feed_items WHERE lower(scam_type) NOT IN ('unclear','unsure')";args=[]
+    sql="SELECT id,scam_type,title,summary,region,lat,lng,source_name,source_url,date FROM feed_items WHERE lower(scam_type) NOT IN ('unclear','unsure')";args=[]
     if scam_type: sql+=" AND lower(scam_type)=lower(?)";args=[scam_type]
     sql+=" ORDER BY date DESC, id DESC LIMIT ?";args.append(limit)
     with connection() as con: return [dict(r) for r in con.execute(sql,args).fetchall()]
+
+
+def get_feed_report(report_id: int) -> dict[str, Any] | None:
+    """Return one public feed record for the map's in-app full report view."""
+    with connection() as con:
+        row = con.execute(
+            "SELECT id,scam_type,title,summary,region,lat,lng,source_name,source_url,date FROM feed_items WHERE id=? AND lower(scam_type) NOT IN ('unclear','unsure')",
+            (report_id,),
+        ).fetchone()
+    return dict(row) if row else None
 
 
 def weekly_intelligence_snapshot(days: int = 7) -> dict[str, list[dict[str, Any]]]:
@@ -219,7 +229,7 @@ def weekly_intelligence_snapshot(days: int = 7) -> dict[str, list[dict[str, Any]
         return "job"
 
     map_points = [
-        {"id": f"weekly-{index}", "lat": row["lat"], "lng": row["lng"], "type": map_type(row["scam_type"]),
+        {"id": f"weekly-{index}", "reportId": row["id"], "lat": row["lat"], "lng": row["lng"], "type": map_type(row["scam_type"]),
          "count": 1, "area": row["region"], "date": row["date"], "title": row["title"]}
         for index, row in enumerate(recent, 1)
     ]

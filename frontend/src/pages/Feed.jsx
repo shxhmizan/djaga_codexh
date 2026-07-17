@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Sparkles } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import ScamFeed from '../components/feed/ScamFeed';
@@ -10,6 +11,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import ScamHeatmap from '../components/map/ScamHeatmap';
 
 export default function Feed() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportType, setReportType] = useState('unsure');
   const [reportDescription, setReportDescription] = useState('');
@@ -23,6 +25,8 @@ export default function Feed() {
   const [submitting, setSubmitting] = useState(false);
   const [feedRefreshKey, setFeedRefreshKey] = useState(0);
   const [liveAlerts, setLiveAlerts] = useState([]);
+  const [fullReport, setFullReport] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const { addToast } = useApp();
   const { t } = useTranslation();
 
@@ -43,6 +47,15 @@ export default function Feed() {
   }, []);
 
   useEffect(() => { loadFeed(); }, [loadFeed, feedRefreshKey]);
+
+  useEffect(() => {
+    const reportId = searchParams.get('report');
+    if (!reportId) { setFullReport(null); return; }
+    setReportLoading(true);
+    fetch(`/api/feed/reports/${encodeURIComponent(reportId)}`, { credentials: 'include' })
+      .then(response => response.ok ? response.json() : null)
+      .then(setFullReport).finally(() => setReportLoading(false));
+  }, [searchParams]);
 
   const filteredAlerts = liveAlerts;
 
@@ -203,6 +216,12 @@ export default function Feed() {
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-tertiary)' }}>Your report was saved and added to the community intelligence feed as unverified. Sensitive identifiers are redacted before public display.</p>
             <Button fullWidth onClick={() => setShowAnalysisModal(false)}>Done</Button>
           </div>}
+        </Modal>
+
+        <Modal isOpen={Boolean(searchParams.get('report'))} onClose={() => setSearchParams({})} title="Full scam report">
+          {reportLoading && <p className="text-sm" style={{color:'var(--text-secondary)'}}>Loading report…</p>}
+          {!reportLoading && !fullReport && <p className="text-sm" style={{color:'var(--text-secondary)'}}>This report is no longer available.</p>}
+          {fullReport && <div className="space-y-4"><div><span className="inline-flex rounded-full px-2 py-1 text-[10px] font-semibold uppercase" style={{background:'var(--threat-dim)',color:'var(--threat)'}}>{fullReport.scam_type}</span><h4 className="mt-3 text-xl font-semibold" style={{fontFamily:'var(--font-display)'}}>{fullReport.title}</h4></div><p className="text-sm leading-relaxed" style={{color:'var(--text-secondary)'}}>{fullReport.summary}</p><div className="grid grid-cols-2 gap-3 text-sm"><div className="rounded-xl p-3" style={{background:'var(--bg-tertiary)',border:'1px solid var(--border)'}}><span className="block text-xs" style={{color:'var(--text-tertiary)'}}>Area</span><strong>{fullReport.region}</strong></div><div className="rounded-xl p-3" style={{background:'var(--bg-tertiary)',border:'1px solid var(--border)'}}><span className="block text-xs" style={{color:'var(--text-tertiary)'}}>Reported</span><strong>{fullReport.date}</strong></div></div><p className="text-xs" style={{color:'var(--text-tertiary)'}}>Source: {fullReport.source_name}</p>{/^https?:\/\//.test(fullReport.source_url) && <a href={fullReport.source_url} target="_blank" rel="noreferrer" className="inline-flex text-sm font-semibold no-underline" style={{color:'var(--accent)'}}>Open source reference ↗</a>}<Button fullWidth onClick={() => setSearchParams({})}>Close report</Button></div>}
         </Modal>
       </div>
     </PageWrapper>

@@ -114,9 +114,9 @@ function buildPopupHTML(point, scamTypes) {
         ${typeData.description || ''}
       </div>
       <div style="padding:8px 16px 14px;display:flex;gap:8px">
-        <button style="flex:1;padding:6px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid #4FD1A5;background:#4FD1A5;color:#082017;cursor:pointer">
+        <a href="/feed?report=${encodeURIComponent(point.reportId || '')}" style="flex:1;text-align:center;padding:6px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid #4FD1A5;background:#4FD1A5;color:#082017;cursor:pointer;text-decoration:none">
           View full report
-        </button>
+        </a>
         <button onclick="navigator.clipboard.writeText('⚠️ Scam alert in ${point.area}: ${typeData.label}. Stay safe! — DJAGA')" style="padding:6px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid rgba(207,255,234,.32);background:rgba(255,255,255,.10);color:#F4FFF9;cursor:pointer">
           Share
         </button>

@@ -17,7 +17,7 @@ from assistant.chat import stream_reply
 from auth import change_password, current_user, login, logout, mydigital_login, register
 from config import settings
 from contracts import FeedItem, User, Verdict
-from db import clear_user_history, create_check as db_create_check, get_check, get_feed, get_intelligence, get_user_settings, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_user_settings, save_verdict, set_language, top_identifier_match, update_user_name, upsert_feed, weekly_intelligence_snapshot
+from db import clear_user_history, create_check as db_create_check, get_check, get_feed, get_feed_report, get_intelligence, get_user_settings, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_user_settings, save_verdict, set_language, top_identifier_match, update_user_name, upsert_feed, weekly_intelligence_snapshot
 from jobs.harvester import harvest
 from integrations.openrouter_client import extract_text_from_image
 from intelligence_engine import refresh_modus_operandi
@@ -240,6 +240,15 @@ async def check_stream(session_id: str, djaga_session: str | None = Cookie(None)
 def api_feed(type: str | None = None, limit: int = 60, djaga_session: str | None = Cookie(None)):
     require_user(djaga_session)
     return get_feed(type, min(max(limit, 1), 100))
+
+
+@app.get("/api/feed/reports/{report_id}")
+def api_feed_report(report_id: int, djaga_session: str | None = Cookie(None)):
+    require_user(djaga_session)
+    report = get_feed_report(report_id)
+    if not report:
+        raise HTTPException(404, "Report not found")
+    return report
 
 
 @app.get("/api/intelligence")
