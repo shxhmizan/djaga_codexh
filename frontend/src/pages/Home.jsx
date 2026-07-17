@@ -108,8 +108,11 @@ export default function Home() {
         <h1
           className="text-4xl lg:text-5xl font-extrabold mb-5 leading-tight"
           style={{
-            fontFamily: 'var(--font-display)',
-            letterSpacing: '-2px',
+            // Inter stays crisp at the hero's large, animated scale. Syne is
+            // retained for section headings, where its character is readable.
+            fontFamily: 'var(--font-body)',
+            fontWeight: 800,
+            letterSpacing: '-1.5px',
             lineHeight: 1.1,
             minHeight: '160px',
           }}
