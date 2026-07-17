@@ -260,7 +260,7 @@ export default function Chat() {
             <MessageCircle size={22} />
           </div>
 
-          <div className="flex gap-2 overflow-x-auto px-4 pb-3" style={{scrollbarWidth:'none'}}>
+          <div className="assistant-suggested-prompts">
             {['Check a phone or bank number', 'What should I do after an OTP request?', 'Any scams in Ipoh lately?'].map(prompt => <button key={prompt} type="button" onClick={() => { setInput(prompt); inputRef.current?.focus(); }} className="shrink-0 rounded-full px-3 py-1.5 text-[11px]" style={{background:'var(--bg-tertiary)',border:'1px solid var(--border)',color:'var(--text-secondary)',cursor:'pointer'}}>{prompt}</button>)}
           </div>
 
