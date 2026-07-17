@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ChevronRight, CircleHelp, Database, FileText, LockKeyhole, LogOut, Mail, ShieldCheck, SlidersHorizontal, Sparkles, UserRound } from 'lucide-react';
+import { Bell, ChevronRight, CircleHelp, Clock3, Database, FileText, LockKeyhole, LogOut, Mail, ShieldAlert, ShieldCheck, SlidersHorizontal, Sparkles, UserRound } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import Card from '../components/ui/Card';
 import { useApp } from '../context/AppContext';
@@ -28,6 +28,8 @@ export default function Profile() {
   const [checks, setChecks] = useState([]);
   const [alerts, setAlerts] = useState(true);
   const [privateMode, setPrivateMode] = useState(false);
+  const [latestVerdict, setLatestVerdict] = useState(null);
+  const [verdictLoading, setVerdictLoading] = useState(false);
 
   useEffect(() => {
     document.title = 'Profile — DJAGA';
@@ -40,7 +42,19 @@ export default function Profile() {
     if (!response.ok) return addToast({ type:'error', message:settings.detail || 'Could not save setting.' });
     setAlerts(settings.scam_alerts); setPrivateMode(settings.private_analysis);
   };
-  const stats = useMemo(() => ({ total: checks.length, danger: checks.filter(c => c.level === 'danger').length, latest: checks[0]?.level || 'No checks yet' }), [checks]);
+  const completedChecks = useMemo(() => checks.filter(check => check.status === 'complete' && check.level && check.risk != null), [checks]);
+  const latestCheck = completedChecks[0] || null;
+  const stats = useMemo(() => ({ total: checks.length, danger: completedChecks.filter(c => c.level === 'danger').length, latest: latestCheck }), [checks.length, completedChecks, latestCheck]);
+  useEffect(() => {
+    if (!latestCheck?.id) { setLatestVerdict(null); return; }
+    let active = true; setVerdictLoading(true);
+    fetch(`/api/checks/${latestCheck.id}/verdict`, { credentials: 'include' })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => { if (active) setLatestVerdict(data); })
+      .catch(() => { if (active) setLatestVerdict(null); })
+      .finally(() => { if (active) setVerdictLoading(false); });
+    return () => { active = false; };
+  }, [latestCheck?.id]);
   const initials = (user?.name || 'DJ').split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase();
   const signOut = async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
@@ -51,8 +65,11 @@ export default function Profile() {
     <header className="mb-7"><p className="text-xs uppercase tracking-[.18em] mb-2" style={{ color: 'var(--accent)' }}>Your DJAGA</p><h1 className="text-3xl lg:text-4xl font-bold" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-1px' }}>Profile & settings</h1></header>
 
     <Card className="mb-5 overflow-hidden"><div className="p-5 flex items-center gap-4" style={{ background: 'linear-gradient(135deg, var(--accent-dim), transparent)' }}><div className="w-16 h-16 rounded-2xl flex items-center justify-center text-lg font-bold" style={{ background: 'var(--accent)', color: '#062119', boxShadow: '0 0 30px var(--accent-dim)' }}>{initials}</div><div className="min-w-0 flex-1"><h2 className="text-xl font-bold truncate" style={{ fontFamily: 'var(--font-display)' }}>{user?.name || 'DJAGA member'}</h2><p className="text-sm truncate mt-1" style={{ color: 'var(--text-secondary)' }}>{user?.email}</p><span className="inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{ color: 'var(--accent)', background: 'var(--accent-dim)' }}><ShieldCheck size={13} /> Protected account</span></div></div>
-      <div className="grid grid-cols-3 border-t" style={{ borderColor: 'var(--border)' }}><div className="p-4 text-center"><strong className="block text-xl" style={{ color: 'var(--text-primary)' }}>{stats.total}</strong><span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Checks run</span></div><div className="p-4 text-center border-x" style={{ borderColor: 'var(--border)' }}><strong className="block text-xl" style={{ color: stats.danger ? 'var(--threat)' : 'var(--text-primary)' }}>{stats.danger}</strong><span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Risks caught</span></div><div className="p-4 text-center"><strong className="block text-sm truncate pt-1" style={{ color: 'var(--accent)' }}>{stats.latest}</strong><span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Last verdict</span></div></div>
+      <div className="grid grid-cols-3 border-t" style={{ borderColor: 'var(--border)' }}><div className="p-4 text-center"><strong className="block text-xl" style={{ color: 'var(--text-primary)' }}>{stats.total}</strong><span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Checks run</span></div><div className="p-4 text-center border-x" style={{ borderColor: 'var(--border)' }}><strong className="block text-xl" style={{ color: stats.danger ? 'var(--threat)' : 'var(--text-primary)' }}>{stats.danger}</strong><span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Risks caught</span></div><div className="p-4 text-center"><strong className="block text-sm truncate pt-1 capitalize" style={{ color: stats.latest?.level === 'danger' ? 'var(--threat)' : stats.latest?.level === 'caution' ? 'var(--warning)' : 'var(--accent)' }}>{stats.latest ? `${Math.round(stats.latest.risk * 100)}% ${stats.latest.level}` : '—'}</strong><span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Last verdict</span></div></div>
     </Card>
+
+    <section className="mb-5"><h2 className="text-xs uppercase tracking-[.16em] px-1 mb-2" style={{ color: 'var(--text-tertiary)' }}>Latest protection check</h2>
+      {!latestCheck ? <Card hover={false}><ShieldCheck size={25} style={{color:'var(--accent)'}}/><h2 className="mt-3 font-semibold">No checks completed yet</h2><p className="mt-1 text-sm" style={{color:'var(--text-secondary)'}}>Run a scan to save an evidence-backed protection verdict here.</p><button onClick={() => navigate('/scam-check')} className="mt-4 text-sm font-semibold" style={{background:'none',border:0,padding:0,color:'var(--accent)',cursor:'pointer'}}>Start a Scam Check →</button></Card> : <Card padding={false} onClick={() => navigate(`/trace/${latestCheck.id}`)} className="overflow-hidden"><div className="p-5" style={{background:latestCheck.level === 'danger'?'linear-gradient(135deg, var(--threat-dim), transparent)':latestCheck.level === 'caution'?'linear-gradient(135deg, var(--warning-dim), transparent)':'linear-gradient(135deg, var(--safe-dim), transparent)'}}><div className="flex items-start gap-3"><span className="w-11 h-11 rounded-xl flex items-center justify-center" style={{background:latestCheck.level === 'danger'?'var(--threat-dim)':latestCheck.level === 'caution'?'var(--warning-dim)':'var(--safe-dim)',color:latestCheck.level === 'danger'?'var(--threat)':latestCheck.level === 'caution'?'var(--warning)':'var(--safe)'}}>{latestCheck.level === 'danger'?<ShieldAlert size={21}/>:<ShieldCheck size={21}/>}</span><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-3"><p className="font-semibold capitalize">{latestCheck.kind} check</p><strong className="text-lg" style={{color:latestCheck.level === 'danger'?'var(--threat)':latestCheck.level === 'caution'?'var(--warning)':'var(--safe)'}}>{Math.round(latestCheck.risk * 100)}%</strong></div><p className="mt-1 text-sm font-medium capitalize" style={{color:latestCheck.level === 'danger'?'var(--threat)':latestCheck.level === 'caution'?'var(--warning)':'var(--safe)'}}>{latestCheck.level === 'danger'?'Potential scam':latestCheck.level === 'caution'?'Mixed scam signals':'No strong scam signal'}</p><p className="mt-2 text-xs flex items-center gap-1" style={{color:'var(--text-tertiary)'}}><Clock3 size={12}/>{new Date(latestCheck.created_at * 1000).toLocaleString()}</p></div></div>{verdictLoading?<p className="mt-4 text-sm" style={{color:'var(--text-secondary)'}}>Loading stored evidence…</p>:<p className="mt-4 text-sm leading-relaxed" style={{color:'var(--text-secondary)'}}>{latestVerdict?.evidence?.[0]?.claim || latestCheck.transcript || 'Stored verdict evidence is available in the trace.'}</p>}<span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold" style={{color:'var(--accent)'}}>View evidence <ChevronRight size={16}/></span></div></Card>}</section>
 
     <section className="mb-5"><h2 className="text-xs uppercase tracking-[.16em] px-1 mb-2" style={{ color: 'var(--text-tertiary)' }}>Account</h2><Card className="overflow-hidden"><Row icon={UserRound} title="Account details" detail={user?.email} onClick={() => navigate('/profile/account')} /><Row icon={Mail} title="Communication preferences" detail="Security updates and scam alerts" onClick={() => navigate('/profile/communication')} /><Row icon={LockKeyhole} title="Password & security" detail="Password protected account" onClick={() => navigate('/profile/security')} /></Card></section>
 
