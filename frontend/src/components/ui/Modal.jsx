@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export default function Modal({ isOpen, onClose, title, children, maxWidth = 480 }) {
@@ -27,7 +28,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 480
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div
       ref={overlayRef}
       className="fixed inset-0 flex items-center justify-center p-4"
@@ -46,6 +47,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 480
         style={{
           maxWidth,
           maxHeight: 'calc(100dvh - 2rem)',
+          minHeight: 0,
           position: 'relative',
           zIndex: 2001,
           background: 'var(--bg-elevated)',
@@ -55,7 +57,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 480
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <h3 className="text-lg font-semibold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
             {title}
           </h3>
@@ -69,10 +71,11 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 480
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 overflow-y-auto">
+        <div className="px-6 py-5 overflow-y-auto flex-1 min-h-0">
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
