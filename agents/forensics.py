@@ -1,4 +1,4 @@
-"""Voice-scam and authenticity analysis through OpenRouter Gemini audio."""
+"""Voice-scam and authenticity analysis through the DJAGA voice agent."""
 from __future__ import annotations
 
 import mock_agents
@@ -20,8 +20,8 @@ class ForensicsAgent:
             )
         result = await analyse_voice_audio(blob, str(kwargs.get("content_type") or "audio/mp4"))
         score = round(float(result["acoustic_score"]), 3)
-        artifacts = result["artifacts"] or ["Gemini found no specific audible authenticity cue in this clip."]
-        claim = f"Gemini voice analysis: {result['claim']} Potential synthetic-voice signal: {score:.0%}."
+        artifacts = result["artifacts"] or ["DJAGA found no specific audible authenticity cue in this clip."]
+        claim = f"DJAGA agent analysis: {result['claim']} Potential synthetic-voice signal: {score:.0%}."
         return AgentResult(
             agent="forensics",
             score=score,

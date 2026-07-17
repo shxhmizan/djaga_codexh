@@ -28,7 +28,7 @@ class ImageForensicsAgent:
                 score = round(float(result["synthetic_probability"]), 3)
                 artifacts = result["artifacts"]
                 top = {"label": result["label"], "score": 1.0 - score if result["label"] == "likely_authentic" else score}
-                claim = f"Gemini image analysis: {result['claim']} Synthetic-image probability: {score:.0%}."
+                claim = f"DJAGA agent analysis: {result['claim']} Synthetic-image probability: {score:.0%}."
                 provider = result["provider"]
                 model = result["model"]
                 predictions = [{"label": top["label"], "score": top["score"]}]

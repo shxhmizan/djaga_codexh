@@ -1,4 +1,4 @@
-"""Audio transcription using ElevenLabs Scribe or Gemini audio input."""
+"""Audio transcription using ElevenLabs Scribe or the DJAGA voice agent."""
 from __future__ import annotations
 
 import mock_agents
@@ -22,5 +22,5 @@ class TranscribeAgent:
         result = await analyse_voice_audio(blob, content_type)
         transcript = result["transcript"]
         if not transcript:
-            return AgentResult(agent="transcribe", unavailable=True, payload={"claim": "Gemini could not extract a usable transcript from this audio."})
-        return AgentResult(agent="transcribe", payload={"transcript": transcript, "provider": "openrouter", "model": result["model"], "claim": "Gemini transcribed the uploaded voice note."})
+            return AgentResult(agent="transcribe", unavailable=True, payload={"claim": "DJAGA could not extract a usable transcript from this audio."})
+        return AgentResult(agent="transcribe", payload={"transcript": transcript, "provider": "openrouter", "model": result["model"], "claim": "DJAGA transcribed the uploaded voice note."})

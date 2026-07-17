@@ -226,7 +226,7 @@ export default function Feed() {
         <Modal isOpen={showAnalysisModal} onClose={() => setShowAnalysisModal(false)} title="DJAGA analysis">
           {analysis && <div className="space-y-5">
             <div className="rounded-2xl p-5" style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)' }}>
-              <div className="flex items-center gap-2 mb-3" style={{ color: 'var(--accent)' }}><Sparkles size={18}/><span className="text-xs font-semibold uppercase tracking-wide">{analysis.mode === 'openrouter' ? 'OpenRouter AI classification' : 'DJAGA AI classification'}</span></div>
+              <div className="flex items-center gap-2 mb-3" style={{ color: 'var(--accent)' }}><Sparkles size={18}/><span className="text-xs font-semibold uppercase tracking-wide">DJAGA agent analysis</span></div>
               <h4 className="text-lg font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>{analysis.title}</h4>
               <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{analysis.explanation || 'DJAGA found language and indicators commonly associated with this scam type.'}</p>
             </div>
