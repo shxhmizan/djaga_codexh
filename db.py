@@ -176,8 +176,10 @@ def normalize_feed_source_names() -> None:
         )
 
 def get_feed(scam_type: str | None=None,limit:int=60) -> list[dict[str,Any]]:
-    sql="SELECT scam_type,title,summary,region,lat,lng,source_name,source_url,date FROM feed_items";args=[]
-    if scam_type: sql+=" WHERE lower(scam_type)=lower(?)";args=[scam_type]
+    # Do not surface records whose classification is explicitly unclear in
+    # the public alerts list.  They remain stored for moderation/audit use.
+    sql="SELECT scam_type,title,summary,region,lat,lng,source_name,source_url,date FROM feed_items WHERE lower(scam_type) NOT IN ('unclear','unsure')";args=[]
+    if scam_type: sql+=" AND lower(scam_type)=lower(?)";args=[scam_type]
     sql+=" ORDER BY date DESC, id DESC LIMIT ?";args.append(limit)
     with connection() as con: return [dict(r) for r in con.execute(sql,args).fetchall()]
 

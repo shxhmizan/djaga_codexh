@@ -4,6 +4,7 @@ import MapControls from './MapControls';
 import MapLegend from './MapLegend';
 import AIInsightsPanel from './AIInsightsPanel';
 import LiveStats from './LiveStats';
+import StateActivityLog from './StateActivityLog';
 import { useApp } from '../../context/AppContext';
 import useIntelligence from '../../hooks/useIntelligence';
 
@@ -163,6 +164,7 @@ export default function ScamHeatmap({ refreshKey = 0 }) {
           </div>
 
           <MapLegend scamTypes={intelligence.scam_types} />
+          <StateActivityLog cityStats={intelligence.city_stats} mapPoints={mapPoints} />
         </div>
 
         {/* AI Insights Panel */}
