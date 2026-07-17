@@ -25,6 +25,7 @@ export default function Chat() {
   const [notice, setNotice] = useState('');
   const [waveform, setWaveform] = useState(() => Array.from({ length: 36 }, () => 0.18));
   const inputRef = useRef(null);
+  const messagesRef = useRef(null);
 
   const conversation = useConversation({
     onConnect: () => setNotice('Voice connected. Speak naturally.'),
@@ -77,6 +78,11 @@ export default function Chat() {
     frameId = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frameId);
   }, [conversation.isMuted, getInputByteFrequencyData, isConnected]);
+
+  useEffect(() => {
+    const node = messagesRef.current;
+    if (node) node.scrollTop = node.scrollHeight;
+  }, [messages, loading]);
 
   async function requestMicrophone() {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -258,7 +264,7 @@ export default function Chat() {
             {['Check a phone or bank number', 'What should I do after an OTP request?', 'Any scams in Ipoh lately?'].map(prompt => <button key={prompt} type="button" onClick={() => { setInput(prompt); inputRef.current?.focus(); }} className="shrink-0 rounded-full px-3 py-1.5 text-[11px]" style={{background:'var(--bg-tertiary)',border:'1px solid var(--border)',color:'var(--text-secondary)',cursor:'pointer'}}>{prompt}</button>)}
           </div>
 
-          <div className="assistant-messages">
+          <div ref={messagesRef} className="assistant-messages" aria-live="polite">
             {messages.map((message, index) => (
               <div key={index} className={`assistant-message-row ${message.role === 'user' ? 'from-user' : ''}`}>
                 <div className="assistant-message">

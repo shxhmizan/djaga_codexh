@@ -787,9 +787,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .assistant-chat-panel {
-  min-height: 660px;
+  height: min(660px, calc(100dvh - 104px));
+  min-height: 540px;
   display: flex;
   flex-direction: column;
+  position: sticky;
+  top: 82px;
   border-radius: 30px;
   padding: 18px;
 }
@@ -976,7 +979,10 @@ h1, h2, h3, h4, h5, h6 {
 
   .assistant-voice-panel,
   .assistant-chat-panel {
-    min-height: auto;
+    height: min(600px, calc(100dvh - 78px));
+    min-height: 500px;
+    position: relative;
+    top: auto;
     border-radius: 24px;
   }
 
