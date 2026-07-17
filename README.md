@@ -153,7 +153,8 @@ All secrets belong in `.env` locally or your platform’s environment settings i
 | `EL_VOICE_ID` | ElevenLabs voice used for DJAGA replies |
 | `ELEVENLABS_AGENT_ID` | Optional ElevenLabs conversational voice assistant |
 | `HF_TOKEN` | Access to Hugging Face gated models, if needed |
-| `VOICE_MODEL_ID` / `IMAGE_MODEL_ID` | Local Hugging Face model overrides |
+| `VOICE_FORENSICS_MODEL=google/gemini-3.1-flash-lite` | Gemini audio analysis for Voice Scanner |
+| `IMAGE_MODEL_ID` | Local Hugging Face fallback override for Image Scanner only |
 
 ### 🗄️ Supabase
 
@@ -185,9 +186,9 @@ It generates a readable, public, seven-day feed snapshot from the app database. 
 | Agent | Role |
 | --- | --- |
 | Intake | Validates input and selects the correct investigation route |
-| Forensics | Checks voice/audio signals for possible synthetic speech |
+| Forensics | Uses Gemini audio analysis for cautious synthetic-voice and scam-conversation signals |
 | Image Forensics | Uses Gemini image analysis, then a local HF fallback if necessary |
-| Transcribe | Converts audio to text with ElevenLabs Scribe or local ASR fallback |
+| Transcribe | Converts audio to text with ElevenLabs Scribe or Gemini audio input |
 | Behavioral | Finds urgency, secrecy, impersonation, payment pressure, and similar scam patterns |
 | Registry | Searches stored scam reports, seed intelligence, and optional Vector Search |
 | OSINT | Searches configured live public sources for named entities and scam context |

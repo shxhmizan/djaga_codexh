@@ -30,9 +30,9 @@ class Settings:
     el_voice_id: str = os.getenv("EL_VOICE_ID", "")
     elevenlabs_agent_id: str = os.getenv("ELEVENLABS_AGENT_ID", "")
     elevenlabs_branch_id: str = os.getenv("ELEVENLABS_BRANCH_ID", "")
-    # Keyless local fallback for voice-note transcription. It is intentionally
-    # smaller than a hosted Scribe model so a developer can run DJAGA offline.
-    local_asr_model: str = os.getenv("LOCAL_ASR_MODEL", "openai/whisper-tiny")
+    # OpenRouter multimodal model used for voice-note transcription and the
+    # cautious voice-authenticity signal in the Voice Scanner.
+    voice_forensics_model: str = os.getenv("VOICE_FORENSICS_MODEL", "google/gemini-3.1-flash-lite")
     # Shared only with the ElevenLabs custom-tool configuration. It protects
     # the public-feed lookup endpoint from arbitrary internet callers.
     elevenlabs_tool_secret: str = os.getenv("ELEVENLABS_TOOL_SECRET", "")
@@ -40,7 +40,6 @@ class Settings:
     # Hugging Face models are loaded lazily so mock-mode installs stay fast and
     # never download model weights during startup.
     image_model_id: str = os.getenv("IMAGE_MODEL_ID", "jacoballessio/ai-image-detect-distilled")
-    voice_model_id: str = os.getenv("VOICE_MODEL_ID", "abhishtagatya/wav2vec2-base-960h-itw-deepfake")
     hf_token: str = os.getenv("HF_TOKEN", "")
     danger_threshold: float = float(os.getenv("DANGER_THRESHOLD", "0.65"))
     caution_threshold: float = float(os.getenv("CAUTION_THRESHOLD", "0.35"))

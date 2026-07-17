@@ -3,6 +3,8 @@ os.environ['DJAGA_DB_PATH']='/tmp/djaga-test.db'
 os.environ['MOCK_DELAY_SCALE']='0'
 os.environ['IMAGE_FORENSICS_MODE']='mock'
 os.environ['OSINT_MODE']='mock'
+os.environ['FORENSICS_AGENT_MODE']='mock'
+os.environ['TRANSCRIBE_AGENT_MODE']='mock'
 os.environ['OPENROUTER_API_KEY']=''
 # Tests must remain self-contained even when a developer has configured a
 # Supabase connection in their local .env file.
@@ -157,3 +159,16 @@ def test_image_verdict_preserves_the_actual_model_posterior():
  assert image_evidence['details']['top_label'] == 'real'
  assert image_evidence['details']['synthetic_probability'] == .29
  assert image_evidence['details']['provider'] == 'openrouter'
+
+
+def test_openrouter_voice_result_is_schema_checked():
+ from integrations.openrouter_client import _voice_analysis_result
+ result = _voice_analysis_result({
+  'acoustic_score': .41,
+  'transcript': 'Please transfer RM300 now.',
+  'patterns': ['payment pressure'],
+  'artifacts': ['short clip'],
+  'claim': 'The clip contains a request for money.',
+ })
+ assert result['acoustic_score'] == .41
+ assert result['transcript'].startswith('Please transfer')
