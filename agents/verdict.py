@@ -36,7 +36,7 @@ class VerdictAgent:
             if name == "image_forensics":
                 item["details"] = {
                     key: result.payload.get(key)
-                    for key in ("synthetic_probability", "top_label", "top_label_probability", "predictions", "model", "image_size")
+                    for key in ("synthetic_probability", "top_label", "top_label_probability", "predictions", "model", "provider", "image_size")
                     if key in result.payload
                 }
             evidence.append(item)

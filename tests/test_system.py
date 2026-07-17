@@ -142,12 +142,13 @@ def test_image_verdict_preserves_the_actual_model_posterior():
   results={
    'image_forensics': AgentResult(
     agent='image_forensics', score=.29,
-    payload={
+   payload={
      'claim':'Classifier returned real: 71%; synthetic-image probability is 29%.',
      'synthetic_probability':.29,
      'top_label':'real',
      'top_label_probability':.71,
      'model':'test-model',
+     'provider':'openrouter',
     },
    ),
   },
@@ -155,3 +156,4 @@ def test_image_verdict_preserves_the_actual_model_posterior():
  image_evidence = verdict.evidence[0]
  assert image_evidence['details']['top_label'] == 'real'
  assert image_evidence['details']['synthetic_probability'] == .29
+ assert image_evidence['details']['provider'] == 'openrouter'

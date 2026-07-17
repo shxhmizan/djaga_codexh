@@ -82,6 +82,7 @@ export function useScanner() {
             topLabel: imagePayload.top_label,
             topLabelProbability: Number(imagePayload.top_label_probability ?? 0),
             model: imagePayload.model,
+            provider: imagePayload.provider,
             available: true,
           } : null,
           traceUrl: `/trace/${session_id}`,

@@ -21,6 +21,9 @@ class Settings:
     openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
     openrouter_model: str = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
     openrouter_vision_model: str = os.getenv("OPENROUTER_VISION_MODEL", "openai/gpt-4o-mini")
+    # Kept separate from screenshot OCR: image authenticity analysis benefits
+    # from a stronger multimodal model without changing other vision features.
+    image_forensics_model: str = os.getenv("IMAGE_FORENSICS_MODEL", "google/gemini-2.5-pro")
     vs_endpoint: str = os.getenv("VS_ENDPOINT", "")
     vs_index: str = os.getenv("VS_INDEX", "")
     elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "")

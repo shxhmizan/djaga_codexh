@@ -129,6 +129,7 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
               <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
                 Synthetic-image probability: {Math.round((syntheticProbability || 0) * 100)}%. This is the classifier output, separate from any web or scam-context evidence.
               </p>
+              {imageAnalysis.provider && <p className="mt-2 text-[11px]" style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>Source: {imageAnalysis.provider}{imageAnalysis.model ? ` · ${imageAnalysis.model}` : ''}</p>}
             </div>
           )}
 
