@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   playUploadSuccess,
@@ -20,7 +20,9 @@ export function useSound() {
     return undefined;
   }, [isMuted]);
 
-  return {
+  // Scanner result effects depend on this object. Memoising it prevents a
+  // normal UI re-render from replaying a completion sound.
+  return useMemo(() => ({
     uploadSuccess: () => play(playUploadSuccess),
     scanStart: () => play(playScanStart),
     analysing: () => play(playAnalysing),
@@ -29,5 +31,5 @@ export function useSound() {
     buttonTap: () => play(playButtonTap),
     reset: () => play(playReset),
     isMuted,
-  };
+  }), [play, isMuted]);
 }

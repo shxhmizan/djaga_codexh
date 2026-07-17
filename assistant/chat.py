@@ -4,7 +4,7 @@ import re
 import time
 import httpx
 from agents.osint import OSINTAgent, extract_entities
-from assistant.tools import check_entity, search_feed, user_checks, explain_verdict
+from assistant.tools import check_entity, search_feed, user_checks, explain_verdict, voice_grounding_context
 from db import registry_candidates
 from config import settings
 from contracts import TraceEvent, User
@@ -80,20 +80,50 @@ async def assistant_reply(user:User,message:str)->tuple[str,str|None]:
   return await _reason_about_attempt(message)
  return "I’m DJAGA, your Malaysian scam-safety assistant. Tell me what happened and I will check scam-language signals, stored reports, your past checks, and—when configured—live public research. If someone pressures you to act now, pause and verify through an official channel.",None
 
+
+async def _api_enriched_reply(user: User, message: str, grounded_reply: str) -> str:
+    """Let configured LLM services explain, never replace, DJAGA evidence.
+
+    The database/agent answer is generated first.  A configured Databricks
+    endpoint or OpenRouter model may make it clearer, but receives explicit
+    source context and is prohibited from inventing reports, findings, or
+    emergency contact details.
+    """
+    context = voice_grounding_context(message)["context"][:5000]
+    system = (
+        "You are DJAGA, a careful Malaysian scam-safety assistant. Rewrite the "
+        "grounded answer in warm, plain English (maximum 150 words). Use only the "
+        "facts in the grounded answer and public-feed context. Do not invent report "
+        "counts, sources, government instructions, or results. Preserve urgent safety "
+        "advice such as independently contacting a bank and NSRC 997 when present."
+    )
+    prompt = f"User question:\n{message[:3000]}\n\nGrounded DJAGA answer:\n{grounded_reply}\n\nCurrent public feed context:\n{context}"
+    try:
+        async with httpx.AsyncClient(timeout=45) as client:
+            if settings.chat_endpoint:
+                response = await client.post(settings.chat_endpoint, json={"messages": [
+                    {"role": "system", "content": system}, {"role": "user", "content": prompt},
+                ]})
+            elif settings.openrouter_api_key:
+                response = await client.post("https://openrouter.ai/api/v1/chat/completions", headers={
+                    "Authorization": f"Bearer {settings.openrouter_api_key}", "Content-Type": "application/json",
+                }, json={"model": settings.openrouter_model, "messages": [
+                    {"role": "system", "content": system}, {"role": "user", "content": prompt},
+                ], "temperature": 0.2})
+            else:
+                return grounded_reply
+            response.raise_for_status()
+            data = response.json()
+        answer = data.get("choices", [{}])[0].get("message", {}).get("content") or data.get("response")
+        return str(answer).strip()[:1800] or grounded_reply
+    except Exception:
+        # API outages never remove grounded safety guidance.
+        return grounded_reply
+
 async def stream_reply(user:User,message:str):
     add_chat(user.id,'user',message)
     reply,tool=await assistant_reply(user,message)
-    # A Databricks OpenAI-compatible serving endpoint can replace the local assistant
-    # without changing the SSE contract. Mock mode deliberately remains keyless.
-    if settings.agent_mode == 'real' and settings.chat_endpoint:
-        try:
-            async with httpx.AsyncClient(timeout=45) as client:
-                response=await client.post(settings.chat_endpoint,json={'messages':[{'role':'system','content':f'You are DJAGA, a warm Malaysian scam-safety expert. Reply in {user.language}.'},{'role':'user','content':message}]})
-                response.raise_for_status();data=response.json()
-                reply=data.get('choices',[{}])[0].get('message',{}).get('content') or data.get('response') or reply
-        except Exception:
-            # A configured service outage should never remove in-app safety guidance.
-            pass
+    reply = await _api_enriched_reply(user, message, reply)
     words=reply.split(' ');built=[]
     for word in words:
         built.append(word)

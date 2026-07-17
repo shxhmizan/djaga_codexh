@@ -14,10 +14,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
-import Modal from '../components/ui/Modal';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import { useApp } from '../context/AppContext';
 
 export default function Chat() {
   const [messages, setMessages] = useState([
@@ -27,14 +23,8 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [micState, setMicState] = useState('idle');
   const [notice, setNotice] = useState('');
-  const [reportOpen, setReportOpen] = useState(false);
-  const [reportText, setReportText] = useState('');
-  const [reportLocation, setReportLocation] = useState('');
-  const [reporting, setReporting] = useState(false);
-  const [reportError, setReportError] = useState('');
   const [waveform, setWaveform] = useState(() => Array.from({ length: 36 }, () => 0.18));
   const inputRef = useRef(null);
-  const { addToast } = useApp();
 
   const conversation = useConversation({
     onConnect: () => setNotice('Voice connected. Speak naturally.'),
@@ -188,23 +178,6 @@ export default function Chat() {
     }
   }
 
-  async function submitReport() {
-    if (reportText.trim().length < 12 || reporting) return;
-    setReporting(true); setReportError('');
-    try {
-      const response = await fetch('/api/reports', {
-        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: reportText, location: reportLocation, consent_public: true }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Could not save the report.');
-      setReportOpen(false); setReportText(''); setReportLocation('');
-      addToast({ type: 'success', title: 'Report saved', message: data.analysis?.title || 'DJAGA classified and saved your report.' });
-      setMessages(current => [...current, { role: 'assistant', content: 'Your report has been saved. I classified it as “' + (data.analysis?.title || 'suspicious activity') + '”. If you have transferred money or shared banking details, contact your bank and NSRC at 997 immediately.' }]);
-    } catch (error) { setReportError(error.message); }
-    finally { setReporting(false); }
-  }
-
   return (
     <PageWrapper>
       <div className="assistant-shell py-6 md:py-10">
@@ -276,16 +249,9 @@ export default function Chat() {
         <aside className="assistant-chat-panel">
           <div className="assistant-chat-header">
             <div>
-              <span>Scam guidance</span>
               <h2>Ask DJAGA</h2>
             </div>
             <MessageCircle size={22} />
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 px-4 pb-3" aria-label="Urgent scam actions">
-            <a href="tel:997" className="rounded-xl px-2 py-2 text-center text-[11px] font-semibold no-underline" style={{background:'var(--threat-dim)',border:'1px solid var(--threat)',color:'var(--threat)'}}>Call NSRC<br/>997</a>
-            <a href="tel:999" className="rounded-xl px-2 py-2 text-center text-[11px] font-semibold no-underline" style={{background:'var(--warning-dim)',border:'1px solid var(--warning)',color:'var(--warning)'}}>Emergency<br/>999</a>
-            <button type="button" onClick={() => setReportOpen(true)} className="rounded-xl px-2 py-2 text-center text-[11px] font-semibold" style={{background:'var(--accent-dim)',border:'1px solid var(--accent-border)',color:'var(--accent)',cursor:'pointer'}}>Report a<br/>scam</button>
           </div>
 
           <div className="flex gap-2 overflow-x-auto px-4 pb-3" style={{scrollbarWidth:'none'}}>
@@ -317,16 +283,6 @@ export default function Chat() {
         </aside>
       </div>
 
-      <Modal isOpen={reportOpen} onClose={() => { setReportOpen(false); setReportError(''); }} title="Report a scam">
-        <div className="space-y-4">
-          <p className="text-sm leading-relaxed" style={{color:'var(--text-secondary)'}}>Describe what happened. DJAGA will classify the report and add an anonymous, unverified signal to community intelligence.</p>
-          <Input label="What happened?" multiline rows={4} value={reportText} onChange={event => setReportText(event.target.value)} placeholder="For example: A caller claimed to be from my bank and asked for an OTP..." maxLength={1200} charCount />
-          <Input label="Approximate location (optional)" value={reportLocation} onChange={event => setReportLocation(event.target.value)} placeholder="e.g. Shah Alam, Selangor" />
-          {reportError && <p className="text-sm" style={{color:'var(--threat)'}}>{reportError}</p>}
-          <p className="text-xs" style={{color:'var(--text-tertiary)'}}>Never include passwords, OTP/TAC codes, or your full bank account number.</p>
-          <Button fullWidth onClick={submitReport} loading={reporting} disabled={reportText.trim().length < 12}>Analyse and submit report</Button>
-        </div>
-      </Modal>
     </PageWrapper>
   );
 }
