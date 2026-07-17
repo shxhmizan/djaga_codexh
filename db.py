@@ -327,6 +327,16 @@ def add_chat(user_id:str,role:str,content:str)->None:
     with connection() as con:con.execute("INSERT INTO chat_messages (user_id,role,content,created_at) VALUES (?,?,?,?)",(user_id,role,content,time.time()))
 
 
+def recent_chat_messages(user_id: str, limit: int = 8) -> list[dict[str, Any]]:
+    """Return a small chronological window for the user's own assistant chat."""
+    with connection() as con:
+        rows = con.execute(
+            "SELECT role,content,created_at FROM chat_messages WHERE user_id=? ORDER BY id DESC LIMIT ?",
+            (user_id, max(1, min(limit, 12))),
+        ).fetchall()
+    return [dict(row) for row in reversed(rows)]
+
+
 def upsert_intelligence(kind: str, records: list[dict[str, Any]], key: str = "id") -> int:
     """Persist intelligence displayed by the product, independent of frontend fixtures."""
     if not records:

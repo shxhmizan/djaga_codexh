@@ -8,7 +8,7 @@ from assistant.tools import check_entity, search_feed, user_checks, explain_verd
 from db import registry_candidates
 from config import settings
 from contracts import TraceEvent, User
-from db import add_chat
+from db import add_chat, recent_chat_messages
 
 _SCAM_SIGNALS = {
     "urgency": ("urgent", "immediately", "now", "today", "cepat", "segera"),
@@ -89,6 +89,7 @@ async def _api_enriched_reply(user: User, message: str, grounded_reply: str) -> 
     findings, or emergency contact details.
     """
     feed = voice_grounding_context(message)
+    history = [{"role": item["role"], "content": item["content"][:700]} for item in recent_chat_messages(user.id, limit=8)]
     checks = user_checks(user.id)[:3]
     needs_history = any(term in message.lower() for term in ("my check", "past check", "history", "verdict", "last scan"))
     check_context = []
@@ -103,7 +104,11 @@ async def _api_enriched_reply(user: User, message: str, grounded_reply: str) -> 
     registry = registry_candidates(message)[:5]
     system = (
         "You are DJAGA, a clever but cautious Malaysian scam-safety assistant. "
-        "Answer in warm, plain English, maximum 180 words. Use only the supplied "
+        "Answer in warm, reassuring, natural English, maximum 180 words. Continue "
+        "the existing conversation instead of restarting with a generic disclaimer. "
+        "Acknowledge the user's specific situation, answer their exact follow-up, and "
+        "ask one short clarifying question only when information is genuinely missing. "
+        "Use only the supplied "
         "DJAGA evidence packet and grounded assessment; never invent report counts, "
         "web research, bank findings, or government instructions. Give practical next "
         "steps. When money, an OTP/TAC, bank access, or an already-made transfer is "
@@ -115,6 +120,7 @@ async def _api_enriched_reply(user: User, message: str, grounded_reply: str) -> 
         "current_public_feed": feed["reports"],
         "registry_matches": registry,
         "relevant_user_checks": check_context,
+        "recent_conversation": history,
         "grounded_assessment": grounded_reply,
     }
     prompt = f"User question:\n{message[:3000]}\n\nDJAGA evidence packet (database/tool output):\n{packet}"
