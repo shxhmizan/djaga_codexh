@@ -122,7 +122,7 @@ export default function AILoadingScreen({ type = 'image', fileName, text, onComp
       >
         {type === 'image' && <ImageAnimation fileName={fileName} progress={progress} />}
         {type === 'text' && <TextAnimation text={text} />}
-        {type === 'voice' && <VoiceAnimation />}
+        {type === 'voice' && <VoiceAnimation progress={progress} />}
       </div>
 
       {/* Progress bar */}
@@ -334,7 +334,7 @@ function TextAnimation({ text }) {
 }
 
 // Voice scan animation — waveform bars
-function VoiceAnimation() {
+function VoiceAnimation({ progress }) {
   const [bars, setBars] = useState(Array(10).fill(30));
 
   useEffect(() => {
@@ -344,6 +344,7 @@ function VoiceAnimation() {
     return () => clearInterval(interval);
   }, []);
 
+  const step = progress < 30 ? 'Validating audio and segmenting the recording' : progress < 60 ? 'Transcribing the conversation for scam-language analysis' : progress < 84 ? 'Checking scam intelligence and live web signals' : 'Fusing conversation and voice-authenticity evidence';
   return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-6">
       {/* Waveform bars */}
@@ -368,7 +369,7 @@ function VoiceAnimation() {
         className="text-xs text-center"
         style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}
       >
-        Analysing voice frequency patterns
+        {step}
         <AnimatedDots />
       </span>
 

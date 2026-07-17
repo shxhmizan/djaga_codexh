@@ -35,8 +35,8 @@ const translations = {
   'home.action.image.desc': { en: 'Detect AI-generated faces and manipulated photos', ms: 'Kesan wajah janaan AI dan foto manipulasi' },
   'home.action.text.title': { en: 'Scam Check', ms: 'Semakan Penipuan' },
   'home.action.text.desc': { en: 'Check a message, link, phone number or bank account', ms: 'Semak mesej, pautan, nombor telefon atau akaun bank' },
-  'home.action.voice.title': { en: 'Voice Deepfake Scanner', ms: 'Pengimbas Deepfake Suara' },
-  'home.action.voice.desc': { en: 'Verify if audio is human or AI-generated', ms: 'Sahkan sama ada audio adalah manusia atau janaan AI' },
+  'home.action.voice.title': { en: 'Voice Scanner', ms: 'Voice Scanner' },
+  'home.action.voice.desc': { en: 'Analyse a voice note or conversation for scam attempts', ms: 'Analyse a voice note or conversation for scam attempts' },
   'home.action.profile.title': { en: 'My Digital ID', ms: 'ID Digital Saya' },
   'home.action.profile.desc': { en: 'View your verified identity and trust score', ms: 'Lihat identiti dan skor kepercayaan anda' },
 
@@ -87,10 +87,10 @@ const translations = {
   'text.pasteHint': { en: 'Paste a message to begin', ms: 'Tampal mesej untuk bermula' },
 
   // ─── Voice Scan Page ───
-  'voice.title': { en: 'Voice Deepfake Scanner', ms: 'Pengimbas Deepfake Suara' },
-  'voice.subtitle': { en: 'Record or upload audio to detect AI-generated voices.', ms: 'Rakam atau muat naik audio untuk mengesan suara janaan AI.' },
-  'voice.recordLive': { en: 'Record Live', ms: 'Rakam Langsung' },
-  'voice.uploadAudio': { en: 'Upload Audio', ms: 'Muat Naik Audio' },
+  'voice.title': { en: 'Voice Scanner', ms: 'Voice Scanner' },
+  'voice.subtitle': { en: 'Record or upload a suspicious voice note. DJAGA analyses the conversation, scam patterns, known intelligence, live sources, and voice authenticity.', ms: 'Record or upload a suspicious voice note. DJAGA analyses the conversation, scam patterns, known intelligence, live sources, and voice authenticity.' },
+  'voice.recordLive': { en: 'Record voice note', ms: 'Record voice note' },
+  'voice.uploadAudio': { en: 'Upload voice note', ms: 'Upload voice note' },
   'voice.recording': { en: 'Recording...', ms: 'Merakam...' },
   'voice.recordReady': { en: 'Recording ready', ms: 'Rakaman siap' },
   'voice.tapRecord': { en: 'Tap to record', ms: 'Ketuk untuk merakam' },
@@ -99,7 +99,7 @@ const translations = {
   'voice.tryDemo': { en: 'Or try a demo:', ms: 'Atau cuba demo:' },
   'voice.realVoice': { en: 'Real Voice', ms: 'Suara Sebenar' },
   'voice.aiVoice': { en: 'AI Voice', ms: 'Suara AI' },
-  'voice.analyseBtn': { en: 'Analyse Voice', ms: 'Analisis Suara' },
+  'voice.analyseBtn': { en: 'Investigate voice', ms: 'Investigate voice' },
 
   // ─── Profile Page ───
   'profile.title': { en: 'My Digital Identity', ms: 'Identiti Digital Saya' },

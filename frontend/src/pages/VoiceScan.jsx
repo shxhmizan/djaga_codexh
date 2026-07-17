@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Mic, Upload, Shield, Square } from 'lucide-react';
+import { AudioLines, Mic, Upload, Shield, Square } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import ScanButton from '../components/scanner/ScanButton';
 import AILoadingScreen from '../components/scanner/AILoadingScreen';
@@ -123,10 +123,6 @@ export default function VoiceScan() {
     sound.reset();
   }, [resetScan, sound]);
 
-  const handleDownloadReport = useCallback(() => {
-    addToast({ type: 'success', message: 'Report downloaded successfully.' });
-  }, [addToast]);
-
   const canScan = hasRecording || hasUpload;
 
   return (
@@ -146,6 +142,8 @@ export default function VoiceScan() {
         <p className="text-sm mb-8" style={{ color: 'var(--text-secondary)' }}>
           {t('voice.subtitle')}
         </p>
+
+        {!result && <div className="mb-6 rounded-2xl p-4 flex gap-3" style={{background:'var(--accent-dim)',border:'1px solid var(--accent-border)'}}><AudioLines size={21} style={{color:'var(--accent)',flexShrink:0,marginTop:2}}/><p className="text-sm leading-relaxed" style={{color:'var(--text-secondary)'}}><strong style={{color:'var(--text-primary)'}}>What DJAGA checks:</strong> spoken scam pressure and impersonation, known scam records, live public reports, and synthetic-voice signals. A voice result is evidence-based—not a single deepfake score.</p></div>}
 
         {/* Tab switcher */}
         <div className="flex gap-1 p-1 rounded-xl mb-6" style={{ background: 'var(--bg-secondary)' }}>
@@ -262,7 +260,6 @@ export default function VoiceScan() {
             <ResultCard
               result={result}
               onReset={handleReset}
-              onDownloadReport={handleDownloadReport}
             />
           </div>
         )}

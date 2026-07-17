@@ -39,6 +39,10 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
 
   const highlights = result.highlights || result.matchedKeywords || [];
   const isTextScan = result.type === 'text';
+  const isVoiceScan = result.type === 'voice';
+  const statusLabel = isVoiceScan
+    ? (threat ? 'POTENTIAL VOICE SCAM' : 'NO STRONG VOICE SCAM SIGNAL')
+    : threat ? 'DEEPFAKE DETECTED' : isTextScan ? (result.verdict === 'scam' ? 'SCAM DETECTED' : 'MESSAGE SAFE') : 'AUTHENTIC IMAGE';
 
   return (
     <div className="relative">
@@ -78,7 +82,7 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
             borderRadius: '16px 16px 0 0',
           }}
         >
-          {getVerdictEmoji(result.verdict)} {threat ? 'DEEPFAKE DETECTED' : result.type === 'text' ? (result.verdict === 'scam' ? 'SCAM DETECTED' : 'MESSAGE SAFE') : 'AUTHENTIC IMAGE'}
+          {getVerdictEmoji(result.verdict)} {statusLabel}
         </div>
 
         <div className="p-6">
@@ -92,7 +96,7 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
                 letterSpacing: '-1px',
               }}
             >
-              {verdictText}
+              {isVoiceScan ? (threat ? 'SCAM RISK' : 'SAFE') : verdictText}
             </h2>
           </div>
 
@@ -134,7 +138,7 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
                 className="text-xs uppercase tracking-wider mb-3"
                 style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', letterSpacing: '1.5px' }}
               >
-                What the AI detected:
+                {isVoiceScan ? 'What DJAGA found in the voice:' : 'What the AI detected:'}
               </h4>
               <div className="space-y-2">
                 {highlights.map((h, i) => (
@@ -172,14 +176,14 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                   {threat
-                    ? (isTextScan ? 'Jangan transfer wang. Hubungi PDRM di 999.' : 'Jangan percaya imej ini.')
-                    : (isTextScan ? 'Mesej ini kelihatan selamat.' : 'Imej ini adalah asli.')
+                    ? (isVoiceScan ? 'Pause the conversation. Do not transfer money or share verification codes.' : isTextScan ? 'Jangan transfer wang. Hubungi PDRM di 999.' : 'Jangan percaya imej ini.')
+                    : (isVoiceScan ? 'No strong scam signal was found in this voice note.' : isTextScan ? 'Mesej ini kelihatan selamat.' : 'Imej ini adalah asli.')
                   }
                 </p>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                   {threat
-                    ? (isTextScan ? 'Do not transfer money. Report to PDRM at 999.' : 'Do not trust this media.')
-                    : (isTextScan ? 'This message appears to be safe.' : 'This image is authentic.')
+                    ? (isVoiceScan ? 'Verify the caller through an independently found number before taking any action.' : isTextScan ? 'Do not transfer money. Report to PDRM at 999.' : 'Do not trust this media.')
+                    : (isVoiceScan ? 'Review the cited evidence and remain cautious if the caller adds pressure later.' : isTextScan ? 'This message appears to be safe.' : 'This image is authentic.')
                   }
                 </p>
               </div>
