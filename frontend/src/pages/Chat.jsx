@@ -11,19 +11,10 @@ import {
   PhoneOff,
   RadioReceiver,
   Send,
-  Settings2,
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
-
-const STORAGE_KEY = 'djaga_elevenlabs_agent_id';
-const ENV_AGENT_ID = import.meta.env.VITE_ELEVENLABS_AGENT_ID || '';
-
-function readStoredAgentId() {
-  if (typeof window === 'undefined') return '';
-  return window.localStorage.getItem(STORAGE_KEY) || '';
-}
 
 export default function Chat() {
   const [messages, setMessages] = useState([
@@ -31,8 +22,6 @@ export default function Chat() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [agentId, setAgentId] = useState(() => ENV_AGENT_ID || readStoredAgentId());
-  const [draftAgentId, setDraftAgentId] = useState(() => ENV_AGENT_ID || readStoredAgentId());
   const [micState, setMicState] = useState('idle');
   const [notice, setNotice] = useState('');
   const [waveform, setWaveform] = useState(() => Array.from({ length: 36 }, () => 0.18));
@@ -43,7 +32,7 @@ export default function Chat() {
     onDisconnect: () => setNotice('Voice session ended.'),
     onError: (error) => {
       console.error('ElevenLabs conversation error:', error);
-      setNotice('The voice session could not continue. Check the agent ID and network connection.');
+      setNotice(`The voice session could not continue${error?.message ? `: ${error.message}` : '.'}`);
     },
   });
 
@@ -58,11 +47,6 @@ export default function Chat() {
     if (isConnecting) return 'Connecting';
     return 'Standby';
   }, [conversation.isListening, conversation.isSpeaking, isConnected, isConnecting]);
-
-  useEffect(() => {
-    if (ENV_AGENT_ID) return;
-    if (agentId) window.localStorage.setItem(STORAGE_KEY, agentId);
-  }, [agentId]);
 
   useEffect(() => {
     let frameId;
@@ -117,25 +101,19 @@ export default function Chat() {
   }
 
   async function startVoiceAgent() {
-    const cleanAgentId = agentId.trim();
-    if (!cleanAgentId) {
-      setNotice('Add your ElevenLabs agent ID before starting voice.');
-      return;
-    }
-
     const hasMic = micState === 'granted' || await requestMicrophone();
     if (!hasMic) return;
 
-    setNotice('Starting secure voice session...');
-    conversation.startSession({ agentId: cleanAgentId });
-  }
-
-  function saveAgentId(event) {
-    event.preventDefault();
-    const cleanAgentId = draftAgentId.trim();
-    setAgentId(cleanAgentId);
-    if (!ENV_AGENT_ID && cleanAgentId) window.localStorage.setItem(STORAGE_KEY, cleanAgentId);
-    setNotice(cleanAgentId ? 'Agent ID saved for this browser.' : 'Agent ID cleared.');
+    try {
+      setNotice('Creating a secure ElevenLabs voice session...');
+      const response = await fetch('/api/elevenlabs/conversation', { credentials: 'include' });
+      const config = await response.json();
+      if (!response.ok) throw new Error(config.detail || 'Voice agent is not configured.');
+      if (config.signed_url) await conversation.startSession({ signedUrl: config.signed_url });
+      else await conversation.startSession({ agentId: config.agent_id });
+    } catch (error) {
+      setNotice(error.message || 'Unable to start the ElevenLabs voice agent.');
+    }
   }
 
   async function send(event) {
@@ -300,26 +278,10 @@ export default function Chat() {
           </form>
 
           <details className="assistant-settings">
-            <summary>
-              <Settings2 size={16} />
-              Voice setup
-            </summary>
-            <form onSubmit={saveAgentId} className="agent-form">
-              <label htmlFor="agent-id">ElevenLabs agent ID</label>
-              <input
-                id="agent-id"
-                value={draftAgentId}
-                onChange={(event) => setDraftAgentId(event.target.value)}
-                placeholder="agent_..."
-                disabled={Boolean(ENV_AGENT_ID)}
-              />
-              <button type="submit" disabled={Boolean(ENV_AGENT_ID)}>
-                {ENV_AGENT_ID ? 'Loaded from env' : 'Save ID'}
-              </button>
-            </form>
+            <summary>Voice setup</summary>
             <div className="assistant-secure-note">
               <ShieldCheck size={16} />
-              <span>Service-role access stays inside Supabase Edge Functions.</span>
+              <span>Your configured ElevenLabs agent starts through DJAGA’s authenticated server. Its API key is never exposed to the browser.</span>
             </div>
           </details>
         </aside>

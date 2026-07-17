@@ -25,6 +25,8 @@ class Settings:
     vs_index: str = os.getenv("VS_INDEX", "")
     elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "")
     el_voice_id: str = os.getenv("EL_VOICE_ID", "")
+    elevenlabs_agent_id: str = os.getenv("ELEVENLABS_AGENT_ID", "")
+    elevenlabs_branch_id: str = os.getenv("ELEVENLABS_BRANCH_ID", "")
     exa_api_key: str = os.getenv("EXA_API_KEY", "")
     # Hugging Face models are loaded lazily so mock-mode installs stay fast and
     # never download model weights during startup.

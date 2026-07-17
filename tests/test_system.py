@@ -107,3 +107,11 @@ def test_profile_management_endpoints_persist_changes():
   assert client.get('/api/profile/settings').json()['private_analysis'] is True
   assert client.post('/api/profile/password',json={'current_password':'longpassword','new_password':'evenlongerpassword'}).status_code == 200
   assert client.delete('/api/profile/history').status_code == 200
+
+def test_elevenlabs_voice_configuration_requires_login_only():
+ with TestClient(app) as client:
+  assert client.get('/api/elevenlabs/conversation').status_code == 401
+  import uuid
+  client.post('/api/auth/register',json={'email':f'{uuid.uuid4()}@example.com','password':'longpassword','name':'Test User'})
+  config = client.get('/api/elevenlabs/conversation')
+  assert config.status_code == 200 and config.json()['agent_id'].startswith('agent_')

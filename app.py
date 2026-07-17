@@ -416,6 +416,13 @@ async def chat_listen(audio: UploadFile = File(...), djaga_session: str | None =
     return {"text": await transcribe_audio(await audio.read(), audio.content_type or "audio/mp4")}
 
 
+@app.get("/api/elevenlabs/conversation")
+async def elevenlabs_conversation(djaga_session: str | None = Cookie(None)):
+    require_user(djaga_session)
+    from integrations.elevenlabs_client import conversation_config
+    return await conversation_config()
+
+
 @app.get("/api/demo/stream")
 async def demo_stream():
     session_id = await manager.create("demo", "call", demo=True)
