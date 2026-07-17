@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus, RefreshCw, Sparkles } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import ScamFeed from '../components/feed/ScamFeed';
 import Button from '../components/ui/Button';
@@ -27,6 +27,7 @@ export default function Feed() {
   const [liveAlerts, setLiveAlerts] = useState([]);
   const [fullReport, setFullReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { addToast } = useApp();
   const { t } = useTranslation();
 
@@ -47,6 +48,22 @@ export default function Feed() {
   }, []);
 
   useEffect(() => { loadFeed(); }, [loadFeed, feedRefreshKey]);
+
+  const handleFeedRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const response = await fetch('/api/feed/refresh', { method: 'POST', credentials: 'include' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.detail || 'Could not refresh intelligence.');
+      await loadFeed();
+      setFeedRefreshKey(key => key + 1);
+      addToast({ type:'success', title:'Intelligence refreshed', message: result.added ? `${result.added} new public report${result.added === 1 ? '' : 's'} added.` : 'DJAGA checked current public sources. No new reports were added.' });
+    } catch (error) {
+      addToast({ type:'error', title:'Refresh failed', message:error.message || 'Could not refresh intelligence.' });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     const reportId = searchParams.get('report');
@@ -99,6 +116,7 @@ export default function Feed() {
               <h2 className="text-lg font-semibold" style={{ fontFamily: 'var(--font-display)' }}>Live intelligence map</h2>
               <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Explore locations, signals, and emerging scam patterns alongside the live feed.</p>
             </div>
+            <Button variant="secondary" size="sm" onClick={handleFeedRefresh} loading={refreshing} className="shrink-0"><RefreshCw size={15}/> Refresh intelligence</Button>
           </div>
           <ScamHeatmap refreshKey={feedRefreshKey} onViewReport={(reportId) => setSearchParams({ report: String(reportId) })} />
         </section>
