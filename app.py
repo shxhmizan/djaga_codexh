@@ -14,10 +14,10 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from assistant.chat import stream_reply
-from auth import current_user, login, logout, mydigital_login, register
+from auth import change_password, current_user, login, logout, mydigital_login, register
 from config import settings
 from contracts import FeedItem, User, Verdict
-from db import create_check as db_create_check, get_check, get_feed, get_intelligence, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_verdict, set_language, top_identifier_match, upsert_feed
+from db import clear_user_history, create_check as db_create_check, get_check, get_feed, get_intelligence, get_user_settings, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_user_settings, save_verdict, set_language, top_identifier_match, update_user_name, upsert_feed
 from jobs.harvester import harvest
 from integrations.openrouter_client import extract_text_from_image
 from intelligence_engine import refresh_modus_operandi
@@ -83,6 +83,37 @@ def api_language(payload: dict, djaga_session: str | None = Cookie(None)):
     if language not in {"en", "ms", "zh", "ta"}:
         raise HTTPException(422, "Unsupported language")
     return {"user": set_language(user.id, language)}
+
+
+@app.patch("/api/profile")
+def api_profile(payload: dict, djaga_session: str | None = Cookie(None)):
+    user = require_user(djaga_session)
+    name = str(payload.get("name", "")).strip()
+    if not 2 <= len(name) <= 80:
+        raise HTTPException(422, "Enter a name between 2 and 80 characters")
+    return {"user": update_user_name(user.id, name)}
+
+
+@app.get("/api/profile/settings")
+def api_profile_settings(djaga_session: str | None = Cookie(None)):
+    return get_user_settings(require_user(djaga_session).id)
+
+
+@app.put("/api/profile/settings")
+def api_save_profile_settings(payload: dict, djaga_session: str | None = Cookie(None)):
+    return save_user_settings(require_user(djaga_session).id, payload)
+
+
+@app.post("/api/profile/password")
+def api_profile_password(payload: dict, djaga_session: str | None = Cookie(None)):
+    change_password(require_user(djaga_session), payload)
+    return {"ok": True}
+
+
+@app.delete("/api/profile/history")
+def api_clear_profile_history(djaga_session: str | None = Cookie(None)):
+    clear_user_history(require_user(djaga_session).id)
+    return {"ok": True}
 
 
 @app.post("/api/checks")

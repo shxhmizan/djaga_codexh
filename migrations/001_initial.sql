@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS feed_items (id BIGSERIAL PRIMARY KEY, dedupe_key TEXT
 CREATE TABLE IF NOT EXISTS chat_messages (id BIGSERIAL PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, role TEXT NOT NULL, content TEXT NOT NULL, created_at DOUBLE PRECISION NOT NULL);
 CREATE TABLE IF NOT EXISTS intelligence_records (kind TEXT NOT NULL, record_key TEXT NOT NULL, payload JSONB NOT NULL, updated_at DOUBLE PRECISION NOT NULL, PRIMARY KEY (kind, record_key));
 CREATE TABLE IF NOT EXISTS community_reports (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, description TEXT NOT NULL, submitted_type TEXT, phone_link TEXT, location TEXT, occurred_when TEXT, consent_public BOOLEAN NOT NULL DEFAULT FALSE, status TEXT NOT NULL, ai_type TEXT NOT NULL, ai_title TEXT NOT NULL, ai_summary TEXT NOT NULL, confidence DOUBLE PRECISION NOT NULL, entities JSONB NOT NULL DEFAULT '[]', created_at DOUBLE PRECISION NOT NULL);
+CREATE TABLE IF NOT EXISTS user_settings (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, scam_alerts BOOLEAN NOT NULL DEFAULT TRUE, private_analysis BOOLEAN NOT NULL DEFAULT FALSE, email_updates BOOLEAN NOT NULL DEFAULT TRUE, updated_at DOUBLE PRECISION NOT NULL);
 CREATE INDEX IF NOT EXISTS checks_user_created_idx ON checks(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS feed_items_type_date_idx ON feed_items(scam_type, date DESC);
 CREATE INDEX IF NOT EXISTS intelligence_records_kind_idx ON intelligence_records(kind);

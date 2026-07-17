@@ -94,3 +94,16 @@ def test_chat_and_agent_failure_do_not_break_a_check(monkeypatch):
    assert client.post('/api/chat',json={'message':'Any scams in Ipoh lately?'}).status_code==200
  finally:
   _agents['osint']=original
+
+def test_profile_management_endpoints_persist_changes():
+ with TestClient(app) as client:
+  import uuid
+  email = f'{uuid.uuid4()}@example.com'
+  assert client.post('/api/auth/register',json={'email':email,'password':'longpassword','name':'Original Name'}).status_code == 200
+  profile = client.patch('/api/profile', json={'name':'Updated Name'})
+  assert profile.status_code == 200 and profile.json()['user']['name'] == 'Updated Name'
+  saved = client.put('/api/profile/settings', json={'scam_alerts':False,'private_analysis':True,'email_updates':False})
+  assert saved.status_code == 200 and saved.json() == {'scam_alerts':False,'private_analysis':True,'email_updates':False}
+  assert client.get('/api/profile/settings').json()['private_analysis'] is True
+  assert client.post('/api/profile/password',json={'current_password':'longpassword','new_password':'evenlongerpassword'}).status_code == 200
+  assert client.delete('/api/profile/history').status_code == 200

@@ -59,6 +59,7 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT,user_id TEXT NOT NULL,role TEXT NOT NULL,content TEXT NOT NULL,created_at REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS intelligence_records (kind TEXT NOT NULL,record_key TEXT NOT NULL,payload TEXT NOT NULL,updated_at REAL NOT NULL,PRIMARY KEY (kind,record_key));
         CREATE TABLE IF NOT EXISTS community_reports (id TEXT PRIMARY KEY,user_id TEXT NOT NULL,description TEXT NOT NULL,submitted_type TEXT,phone_link TEXT,location TEXT,occurred_when TEXT,consent_public INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL,ai_type TEXT NOT NULL,ai_title TEXT NOT NULL,ai_summary TEXT NOT NULL,confidence REAL NOT NULL,entities TEXT NOT NULL DEFAULT '[]',created_at REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS user_settings (user_id TEXT PRIMARY KEY,scam_alerts INTEGER NOT NULL DEFAULT 1,private_analysis INTEGER NOT NULL DEFAULT 0,email_updates INTEGER NOT NULL DEFAULT 1,updated_at REAL NOT NULL);
         """)
         # Migrate the very early prototype schema in-place for existing local installs.
         user_columns={row['name'] for row in con.execute("PRAGMA table_info(users)").fetchall()}
@@ -88,6 +89,36 @@ def user_by_id(user_id: str) -> User | None:
 def set_language(user_id: str, language: str) -> User:
     with connection() as con: con.execute("UPDATE users SET language=? WHERE id=?",(language,user_id))
     return user_by_id(user_id)  # type: ignore[return-value]
+
+def update_user_name(user_id: str, name: str) -> User:
+    with connection() as con: con.execute("UPDATE users SET name=? WHERE id=?", (name.strip(), user_id))
+    return user_by_id(user_id)  # type: ignore[return-value]
+
+def update_password(user_id: str, password_hash: str) -> None:
+    with connection() as con: con.execute("UPDATE users SET password_hash=? WHERE id=?", (password_hash, user_id))
+
+def get_user_settings(user_id: str) -> dict[str, Any]:
+    with connection() as con:
+        row = con.execute("SELECT scam_alerts,private_analysis,email_updates FROM user_settings WHERE user_id=?", (user_id,)).fetchone()
+    if not row:
+        return {"scam_alerts": True, "private_analysis": False, "email_updates": True}
+    return {key: bool(row[key]) for key in ("scam_alerts", "private_analysis", "email_updates")}
+
+def save_user_settings(user_id: str, values: dict[str, Any]) -> dict[str, Any]:
+    current = get_user_settings(user_id)
+    current.update({key: bool(values[key]) for key in current if key in values})
+    with connection() as con:
+        if IS_POSTGRES:
+            con.execute("INSERT INTO user_settings (user_id,scam_alerts,private_analysis,email_updates,updated_at) VALUES (?,?,?,?,?) ON CONFLICT (user_id) DO UPDATE SET scam_alerts=EXCLUDED.scam_alerts,private_analysis=EXCLUDED.private_analysis,email_updates=EXCLUDED.email_updates,updated_at=EXCLUDED.updated_at", (user_id, current["scam_alerts"], current["private_analysis"], current["email_updates"], time.time()))
+        else:
+            con.execute("INSERT OR REPLACE INTO user_settings (user_id,scam_alerts,private_analysis,email_updates,updated_at) VALUES (?,?,?,?,?)", (user_id, current["scam_alerts"], current["private_analysis"], current["email_updates"], time.time()))
+    return current
+
+def clear_user_history(user_id: str) -> None:
+    with connection() as con:
+        con.execute("DELETE FROM verdicts WHERE check_id IN (SELECT id FROM checks WHERE user_id=?)", (user_id,))
+        con.execute("DELETE FROM checks WHERE user_id=?", (user_id,))
+        con.execute("DELETE FROM chat_messages WHERE user_id=?", (user_id,))
 
 def save_session(token_hash: str,user_id: str,expires_at: float) -> None:
     with connection() as con:

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ChevronRight, CircleHelp, Database, FileText, LockKeyhole, LogOut, Mail, Moon, ShieldCheck, SlidersHorizontal, Sparkles, UserRound } from 'lucide-react';
+import { Bell, ChevronRight, CircleHelp, Database, FileText, LockKeyhole, LogOut, Mail, ShieldCheck, SlidersHorizontal, Sparkles, UserRound } from 'lucide-react';
 import PageWrapper from '../components/layout/PageWrapper';
 import Card from '../components/ui/Card';
 import { useApp } from '../context/AppContext';
@@ -12,10 +12,13 @@ function Toggle({ value, onChange, label }) {
 }
 
 function Row({ icon: Icon, title, detail, action, danger = false, onClick }) {
-  return <button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.025]" style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: onClick ? 'pointer' : 'default' }}>
-    <span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: danger ? 'var(--threat-dim)' : 'var(--accent-dim)', color: danger ? 'var(--threat)' : 'var(--accent)' }}><Icon size={18} /></span>
+  const content = <><span className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: danger ? 'var(--threat-dim)' : 'var(--accent-dim)', color: danger ? 'var(--threat)' : 'var(--accent)' }}><Icon size={18} /></span>
     <span className="flex-1 min-w-0"><span className="block text-sm font-semibold" style={{ color: danger ? 'var(--threat)' : 'var(--text-primary)' }}>{title}</span>{detail && <span className="block text-xs mt-0.5 truncate" style={{ color: 'var(--text-tertiary)' }}>{detail}</span>}</span>
-    {action || <ChevronRight size={18} style={{ color: 'var(--text-tertiary)' }} />}
+    {action || <ChevronRight size={18} style={{ color: 'var(--text-tertiary)' }} />}</>;
+  const style = { background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)', cursor: onClick ? 'pointer' : 'default' };
+  if (!onClick && action) return <div className="w-full flex items-center gap-3 px-4 py-4 text-left" style={style}>{content}</div>;
+  return <button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-white/[0.025]" style={style}>
+    {content}
   </button>;
 }
 
@@ -23,15 +26,20 @@ export default function Profile() {
   const { user, setUser, addToast } = useApp();
   const navigate = useNavigate();
   const [checks, setChecks] = useState([]);
-  const [alerts, setAlerts] = useState(() => localStorage.getItem('djaga_alerts') !== 'false');
-  const [privateMode, setPrivateMode] = useState(() => localStorage.getItem('djaga_private') === 'true');
+  const [alerts, setAlerts] = useState(true);
+  const [privateMode, setPrivateMode] = useState(false);
 
   useEffect(() => {
     document.title = 'Profile — DJAGA';
     fetch('/api/checks', { credentials: 'include' }).then(r => r.ok ? r.json() : []).then(setChecks).catch(() => setChecks([]));
+    fetch('/api/profile/settings', { credentials: 'include' }).then(r => r.ok ? r.json() : null).then(settings => { if (settings) { setAlerts(settings.scam_alerts); setPrivateMode(settings.private_analysis); } });
   }, []);
-  useEffect(() => localStorage.setItem('djaga_alerts', String(alerts)), [alerts]);
-  useEffect(() => localStorage.setItem('djaga_private', String(privateMode)), [privateMode]);
+  const saveSettings = async changes => {
+    const response = await fetch('/api/profile/settings', { method:'PUT', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify(changes) });
+    const settings = await response.json();
+    if (!response.ok) return addToast({ type:'error', message:settings.detail || 'Could not save setting.' });
+    setAlerts(settings.scam_alerts); setPrivateMode(settings.private_analysis);
+  };
   const stats = useMemo(() => ({ total: checks.length, danger: checks.filter(c => c.level === 'danger').length, latest: checks[0]?.level || 'No checks yet' }), [checks]);
   const initials = (user?.name || 'DJ').split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase();
   const signOut = async () => {
@@ -46,11 +54,11 @@ export default function Profile() {
       <div className="grid grid-cols-3 border-t" style={{ borderColor: 'var(--border)' }}><div className="p-4 text-center"><strong className="block text-xl" style={{ color: 'var(--text-primary)' }}>{stats.total}</strong><span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Checks run</span></div><div className="p-4 text-center border-x" style={{ borderColor: 'var(--border)' }}><strong className="block text-xl" style={{ color: stats.danger ? 'var(--threat)' : 'var(--text-primary)' }}>{stats.danger}</strong><span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Risks caught</span></div><div className="p-4 text-center"><strong className="block text-sm truncate pt-1" style={{ color: 'var(--accent)' }}>{stats.latest}</strong><span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Last verdict</span></div></div>
     </Card>
 
-    <section className="mb-5"><h2 className="text-xs uppercase tracking-[.16em] px-1 mb-2" style={{ color: 'var(--text-tertiary)' }}>Account</h2><Card className="overflow-hidden"><Row icon={UserRound} title="Account details" detail={user?.email} onClick={() => addToast({ type: 'info', message: 'Your account details are managed securely by DJAGA.' })} /><Row icon={Mail} title="Communication preferences" detail="Security updates and scam alerts" onClick={() => addToast({ type: 'info', message: 'Communication preferences are saved on this device.' })} /><Row icon={LockKeyhole} title="Password & security" detail="Password protected account" onClick={() => addToast({ type: 'info', message: 'Password reset will be available in a future account update.' })} /></Card></section>
+    <section className="mb-5"><h2 className="text-xs uppercase tracking-[.16em] px-1 mb-2" style={{ color: 'var(--text-tertiary)' }}>Account</h2><Card className="overflow-hidden"><Row icon={UserRound} title="Account details" detail={user?.email} onClick={() => navigate('/profile/account')} /><Row icon={Mail} title="Communication preferences" detail="Security updates and scam alerts" onClick={() => navigate('/profile/communication')} /><Row icon={LockKeyhole} title="Password & security" detail="Password protected account" onClick={() => navigate('/profile/security')} /></Card></section>
 
-    <section className="mb-5"><h2 className="text-xs uppercase tracking-[.16em] px-1 mb-2" style={{ color: 'var(--text-tertiary)' }}>Protection settings</h2><Card className="overflow-hidden"><Row icon={Bell} title="Scam alerts" detail="Receive alerts for emerging local threats" action={<Toggle label="Toggle scam alerts" value={alerts} onChange={setAlerts} />} /><Row icon={Database} title="Private analysis" detail="Keep local preferences private on this device" action={<Toggle label="Toggle private analysis" value={privateMode} onChange={setPrivateMode} />} /><Row icon={SlidersHorizontal} title="Detection preferences" detail="Protection checks are configured by your DJAGA workspace" onClick={() => addToast({ type: 'info', message: 'Detection preferences are configured by your DJAGA workspace.' })} /></Card></section>
+    <section className="mb-5"><h2 className="text-xs uppercase tracking-[.16em] px-1 mb-2" style={{ color: 'var(--text-tertiary)' }}>Protection settings</h2><Card className="overflow-hidden"><Row icon={Bell} title="Scam alerts" detail="Receive alerts for emerging local threats" action={<Toggle label="Toggle scam alerts" value={alerts} onChange={value => saveSettings({scam_alerts:value})} />} /><Row icon={Database} title="Private analysis" detail="Keep local preferences private on this device" action={<Toggle label="Toggle private analysis" value={privateMode} onChange={value => saveSettings({private_analysis:value})} />} /><Row icon={SlidersHorizontal} title="Detection preferences" detail="See active protection services" onClick={() => navigate('/profile/detection')} /></Card></section>
 
-    <section className="mb-5"><h2 className="text-xs uppercase tracking-[.16em] px-1 mb-2" style={{ color: 'var(--text-tertiary)' }}>Support & privacy</h2><Card className="overflow-hidden"><Row icon={FileText} title="Check history" detail={`${stats.total} saved check${stats.total === 1 ? '' : 's'}`} onClick={() => navigate('/feed')} /><Row icon={CircleHelp} title="Help centre" detail="Scam-safety guidance and support" onClick={() => navigate('/chat')} /><Row icon={LogOut} title="Sign out" detail="Sign out from this device" danger onClick={signOut} /></Card></section>
+    <section className="mb-5"><h2 className="text-xs uppercase tracking-[.16em] px-1 mb-2" style={{ color: 'var(--text-tertiary)' }}>Support & privacy</h2><Card className="overflow-hidden"><Row icon={FileText} title="Check history" detail={`${stats.total} saved check${stats.total === 1 ? '' : 's'}`} onClick={() => navigate('/profile/history')} /><Row icon={CircleHelp} title="Help centre" detail="Scam-safety guidance and support" onClick={() => navigate('/profile/help')} /><Row icon={LogOut} title="Sign out" detail="Sign out from this device" danger onClick={signOut} /></Card></section>
     <p className="text-center text-xs pb-6" style={{ color: 'var(--text-tertiary)' }}><Sparkles size={12} className="inline mr-1" />DJAGA protects your privacy. Audio is analysed in-session.</p>
   </div></PageWrapper>;
 }

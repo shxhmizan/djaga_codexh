@@ -8,6 +8,7 @@ import ImageScan from './pages/ImageScan';
 import ScamCheck from './pages/ScamCheck';
 import VoiceScan from './pages/VoiceScan';
 import Profile from './pages/Profile';
+import { AccountDetails, CheckHistory, CommunicationPreferences, DetectionPreferences, HelpCentre, PasswordSecurity } from './pages/ProfilePages';
 import Feed from './pages/Feed';
 import Login from './pages/Login';
 import Chat from './pages/Chat';
@@ -48,9 +49,16 @@ function App() {
           <Route path="/scam-check" element={<ScamCheck />} />
           <Route path="/voice" element={<VoiceScan />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/account" element={<AccountDetails />} />
+          <Route path="/profile/communication" element={<CommunicationPreferences />} />
+          <Route path="/profile/security" element={<PasswordSecurity />} />
+          <Route path="/profile/detection" element={<DetectionPreferences />} />
+          <Route path="/profile/history" element={<CheckHistory />} />
+          <Route path="/profile/help" element={<HelpCentre />} />
           <Route path="/feed" element={<Feed />} />
           <Route path="/map" element={<Navigate to="/feed" replace />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/trace/:sessionId" element={<Trace />} />
           <Route path="/agent" element={<Navigate to="/chat" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

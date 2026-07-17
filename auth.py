@@ -6,7 +6,7 @@ import uuid
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 from contracts import User
-from db import create_user, delete_session, save_session, session_user, user_by_email
+from db import create_user, delete_session, save_session, session_user, update_password, user_by_email
 
 COOKIE="djaga_session"
 def _hash(password:str,salt:str|None=None)->str:
@@ -44,3 +44,13 @@ def current_user(raw_token:str|None)->User|None:
 def logout(raw_token:str|None):
     if raw_token:delete_session(hashlib.sha256(raw_token.encode()).hexdigest())
     response=JSONResponse({"ok":True});response.delete_cookie(COOKIE);return response
+
+def change_password(user: User, payload: dict) -> None:
+    current = str(payload.get("current_password", ""))
+    new_password = str(payload.get("new_password", ""))
+    if len(new_password) < 8:
+        raise HTTPException(422, "Use a new password of at least 8 characters")
+    found = user_by_email(user.email)
+    if not found or not _verify(current, found[1]):
+        raise HTTPException(401, "Your current password is incorrect")
+    update_password(user.id, _hash(new_password))
