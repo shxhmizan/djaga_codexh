@@ -28,8 +28,8 @@ const TILE_LAYERS = {
 
 const MAP_CONFIG = {
   center: [4.2105, 108.9758],
-  zoom: 6,
-  minZoom: 5,
+  zoom: 5,
+  minZoom: 4,
   maxZoom: 16,
 };
 
@@ -132,6 +132,7 @@ export default function LeafletMap({ points, heatmapData, showHeatmap, showMarke
   const markerLayerRef = useRef(null);
   const tileLayerRef = useRef(null);
   const userLayerRef = useRef(null);
+  const fittedInitialReportsRef = useRef(false);
   const scamTypes = Object.fromEntries(typeRecords.map(type => [type.id, type]));
 
   // Init map once
@@ -217,6 +218,20 @@ export default function LeafletMap({ points, heatmapData, showHeatmap, showMarke
       }, i * 30);
     });
   }, [points, showMarkers, typeRecords]);
+
+  // The weekly feed spans both Peninsular and East Malaysia. Fit the initial
+  // view to the actual persisted report coordinates rather than leaving a
+  // phone viewport centred on only one side of the country.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || fittedInitialReportsRef.current || !points.length) return;
+    const coordinates = points
+      .filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+      .map(point => [point.lat, point.lng]);
+    if (!coordinates.length) return;
+    fittedInitialReportsRef.current = true;
+    map.fitBounds(L.latLngBounds(coordinates), { padding: [24, 24], maxZoom: 5, animate: false });
+  }, [points]);
 
   // Location never leaves the browser: it only controls this map view and local marker.
   useEffect(() => {
