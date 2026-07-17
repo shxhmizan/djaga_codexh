@@ -1,12 +1,34 @@
-# DJAGA
+# 🛡️ DJAGA
 
-> **Deteksi Jaringan Gelagat Anomali** — an AI scam-defence companion for Malaysia.
+<p align="center">
+  <strong>Deteksi Jaringan Gelagat Anomali</strong><br />
+  Malaysia’s AI scam-defence companion
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/status-active-4FD1A5?style=for-the-badge" alt="Project status: active" />
+  <img src="https://img.shields.io/badge/AI-LangGraph%20%2B%20OpenRouter-8B5CF6?style=for-the-badge" alt="AI: LangGraph and OpenRouter" />
+  <img src="https://img.shields.io/badge/data-Supabase-3ECF8E?style=for-the-badge" alt="Database: Supabase" />
+  <img src="https://img.shields.io/badge/deploy-Render-46E3B7?style=for-the-badge" alt="Deployment: Render" />
+</p>
+
+> [!IMPORTANT]
+> **DJAGA helps you pause, verify, and act safely.** It is decision support—not proof that a person or account committed a crime.
 
 DJAGA helps people investigate suspicious voice notes, images, messages, phone numbers, links, and bank accounts before they act. It combines specialised AI agents, evidence-cited verdicts, a Malaysia-wide intelligence map, community reporting, and a grounded assistant designed for practical scam-safety guidance.
 
 Built for the OpenAI Codex hackathon with a mobile-first, night-watch interface for a high-stress moment: *“Is this real, and what should I do next?”*
 
-## What DJAGA does
+<p align="center">
+  <a href="#-run-locally">Quick start</a> ·
+  <a href="#-configure-real-services">Configuration</a> ·
+  <a href="#-deploy-to-render">Deploy</a> ·
+  <a href="#-how-gpt-56-and-codex-accelerated-this-project">Built with Codex</a>
+</p>
+
+---
+
+## ✨ What DJAGA does
 
 - **Scam Check** — inspect a number, bank account, URL, pasted text, or uploaded conversation screenshot.
 - **Voice Scanner** — analyse a voice note for scam-pressure language, transcription evidence, and voice-authenticity signals.
@@ -16,7 +38,7 @@ Built for the OpenAI Codex hackathon with a mobile-first, night-watch interface 
 - **Ask DJAGA** — a safety-focused assistant that searches the latest feed, registry records, and the signed-in user’s saved check history.
 - **Evidence, not black boxes** — every completed scan records the agent signals that contributed to its verdict.
 
-## Product flow
+## 🧭 Product flow
 
 ```text
 Upload / paste / check identifier
@@ -37,7 +59,7 @@ Upload / paste / check identifier
 
 The app streams investigation activity to the UI with Server-Sent Events (SSE), so users can see the work progressing instead of waiting on an unexplained spinner.
 
-## Stack
+## 🧱 Stack
 
 | Layer | Technology |
 | --- | --- |
@@ -50,15 +72,15 @@ The app streams investigation activity to the UI with Server-Sent Events (SSE), 
 | Vision fallback | Hugging Face Transformers image-authenticity classifier |
 | Deployment | Render (one FastAPI service serving the built React SPA) |
 
-## Run locally
+## 🚀 Run locally
 
-### Prerequisites
+### ✅ Prerequisites
 
 - Python 3.11+
 - Node.js 20+
 - npm
 
-### 1. Clone and create a virtual environment
+### 1️⃣ Clone and create a virtual environment
 
 ```bash
 git clone https://github.com/<your-github-user>/<your-repo>.git
@@ -69,7 +91,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure environment variables
+### 2️⃣ Configure environment variables
 
 ```bash
 cp .env.example .env
@@ -77,7 +99,7 @@ cp .env.example .env
 
 For a fully working local demo, keep `AGENT_MODE=mock`. No API keys are needed: mock mode executes the same LangGraph pipeline with deterministic local evidence.
 
-### 3. Build the frontend and start DJAGA
+### 3️⃣ Build the frontend and start DJAGA
 
 ```bash
 cd frontend
@@ -97,13 +119,13 @@ cd frontend
 npm run dev
 ```
 
-### 4. Run tests
+### 4️⃣ Run tests
 
 ```bash
 pytest -q
 ```
 
-## Sample data and demo mode
+## 🧪 Sample data and demo mode
 
 The project starts with safe sample intelligence data so the map, registry, dashboard, assistant, and scanner flows can be explored immediately.
 
@@ -117,7 +139,7 @@ The project starts with safe sample intelligence data so the map, registry, dash
 
 Mock results are explicitly development scaffolding. When a real provider is configured, each agent can be enabled independently; one failed integration is marked unavailable and the Verdict agent renormalises the remaining evidence instead of failing the whole check.
 
-## Configure real services
+## 🔐 Configure real services
 
 All secrets belong in `.env` locally or your platform’s environment settings in production. Never commit `.env`.
 
@@ -133,7 +155,7 @@ All secrets belong in `.env` locally or your platform’s environment settings i
 | `HF_TOKEN` | Access to Hugging Face gated models, if needed |
 | `VOICE_MODEL_ID` / `IMAGE_MODEL_ID` | Local Hugging Face model overrides |
 
-### Supabase
+### 🗄️ Supabase
 
 Use the Supabase pooled Postgres connection string, including `?sslmode=require`:
 
@@ -148,7 +170,7 @@ SUPABASE_DB_URL='your-connection-string' python3 scripts/migrate_sqlite_to_supab
 python3 scripts/test_supabase_connection.py
 ```
 
-### ElevenLabs knowledge-base option (no webhook)
+### 🎙️ ElevenLabs knowledge-base option (no webhook)
 
 For a voice agent grounded in DJAGA’s current public intelligence without custom tools, add this URL as an ElevenLabs Knowledge Base document:
 
@@ -158,7 +180,7 @@ https://<your-render-service>.onrender.com/api/elevenlabs/knowledge-base.txt
 
 It generates a readable, public, seven-day feed snapshot from the app database. Refresh the document after new reports arrive, or enable URL auto-sync where your ElevenLabs plan supports it. This approach is intentionally feed-only: it never exposes private user scans or account data.
 
-## Agent pipeline
+## 🤖 Agent pipeline
 
 | Agent | Role |
 | --- | --- |
@@ -173,7 +195,7 @@ It generates a readable, public, seven-day feed snapshot from the app database. 
 
 The Verdict agent uses path-specific weights. For example, image checks begin with **70% image evidence + 30% OSINT**, and unavailable signals are excluded before the remaining weights are normalised.
 
-## Project structure
+## 🗂️ Project structure
 
 ```text
 .
@@ -190,7 +212,7 @@ The Verdict agent uses path-specific weights. For example, image checks begin wi
 └── db.py                     # Database repositories and SQLite fallback
 ```
 
-## Deploy to Render
+## ☁️ Deploy to Render
 
 This repo includes [render.yaml](render.yaml).
 
@@ -212,14 +234,14 @@ This repo includes [render.yaml](render.yaml).
 
 The health-check path is `/healthz`.
 
-## Safety and privacy
+## 🔒 Safety and privacy
 
 - Uploaded media is analysed in-session; DJAGA stores derived evidence rather than raw audio/image blobs.
 - Public community reports require consent before being eligible for the shared intelligence feed.
 - A high risk score is a decision-support signal, not proof that a person or number committed a crime.
 - In an urgent scam situation: stop the transfer, contact your bank through an independently found official number, and call Malaysia’s NSRC at **997**.
 
-## How GPT-5.6 and Codex accelerated this project
+## ⚡ How GPT-5.6 and Codex accelerated this project
 
 DJAGA was built with **GPT-5.6 and Codex as hands-on engineering collaborators**, not just as a code generator.
 
@@ -231,6 +253,6 @@ DJAGA was built with **GPT-5.6 and Codex as hands-on engineering collaborators**
 
 The important human decisions remained human-led: the Malaysian safety context, product priorities, what evidence should be shown, how results should be worded, and the choice to be explicit about uncertainty rather than overclaim detection accuracy.
 
-## License
+## 📄 License
 
 Built for a hackathon. Add a license before using this project in production.
