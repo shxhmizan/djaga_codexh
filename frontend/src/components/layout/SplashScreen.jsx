@@ -51,9 +51,9 @@ export default function SplashScreen({ onComplete }) {
 
       // Outer ring glow
       const gradient = ctx.createRadialGradient(cx, cy, 30, cx, cy, 80);
-      gradient.addColorStop(0, 'rgba(108,99,255,0)');
-      gradient.addColorStop(0.6, `rgba(108,99,255,${0.08 + 0.04 * Math.sin(elapsed * 2)})`);
-      gradient.addColorStop(1, 'rgba(108,99,255,0)');
+      gradient.addColorStop(0, 'rgba(102,232,188,0)');
+      gradient.addColorStop(0.6, `rgba(102,232,188,${0.10 + 0.05 * Math.sin(elapsed * 2)})`);
+      gradient.addColorStop(1, 'rgba(102,232,188,0)');
       ctx.beginPath();
       ctx.arc(cx, cy, 70, 0, Math.PI * 2);
       ctx.fillStyle = gradient;
@@ -64,7 +64,7 @@ export default function SplashScreen({ onComplete }) {
       const arcLen = Math.PI * 1.2 + Math.sin(elapsed * 3) * 0.4;
       ctx.beginPath();
       ctx.arc(cx, cy, 52, arcStart, arcStart + arcLen);
-      ctx.strokeStyle = '#6C63FF';
+      ctx.strokeStyle = '#66E8BC';
       ctx.lineWidth = 2;
       ctx.lineCap = 'round';
       ctx.stroke();
@@ -72,7 +72,7 @@ export default function SplashScreen({ onComplete }) {
       // Second arc ring (opposite)
       ctx.beginPath();
       ctx.arc(cx, cy, 52, arcStart + Math.PI, arcStart + Math.PI + arcLen * 0.6);
-      ctx.strokeStyle = '#8B84FF';
+      ctx.strokeStyle = '#62F1D4';
       ctx.lineWidth = 1.5;
       ctx.lineCap = 'round';
       ctx.stroke();
@@ -80,7 +80,7 @@ export default function SplashScreen({ onComplete }) {
       // Inner ring
       ctx.beginPath();
       ctx.arc(cx, cy, 38, -arcStart * 0.7, -arcStart * 0.7 + Math.PI * 0.8);
-      ctx.strokeStyle = 'rgba(108,99,255,0.3)';
+      ctx.strokeStyle = 'rgba(181,255,223,0.34)';
       ctx.lineWidth = 1;
       ctx.lineCap = 'round';
       ctx.stroke();
@@ -92,7 +92,7 @@ export default function SplashScreen({ onComplete }) {
       ctx.font = '32px serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#F1F0FF';
+      ctx.fillStyle = '#F7FFFB';
       ctx.fillText('🛡️', 0, 0);
       ctx.restore();
 
@@ -113,7 +113,7 @@ export default function SplashScreen({ onComplete }) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#050508',
+        background: 'radial-gradient(circle at 50% 0%, #17382D 0%, #0B1B16 46%, #07130F 100%)',
         opacity: phase === 3 ? 0 : 1,
         transition: 'opacity 0.6s cubic-bezier(0.4,0,0.2,1)',
         overflow: 'hidden',
@@ -128,7 +128,7 @@ export default function SplashScreen({ onComplete }) {
           top: '20%', left: '30%',
           width: '400px', height: '400px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(108,99,255,0.15) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(102,232,188,0.18) 0%, transparent 70%)',
           filter: 'blur(80px)',
           animation: 'splashOrb1 6s ease-in-out infinite',
         }} />
@@ -137,7 +137,7 @@ export default function SplashScreen({ onComplete }) {
           bottom: '20%', right: '20%',
           width: '300px', height: '300px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(13,204,177,0.1) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(98,241,212,0.13) 0%, transparent 70%)',
           filter: 'blur(80px)',
           animation: 'splashOrb2 8s ease-in-out infinite',
         }} />
@@ -146,7 +146,7 @@ export default function SplashScreen({ onComplete }) {
           top: '50%', left: '60%',
           width: '250px', height: '250px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(239,68,68,0.06) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(255,116,106,0.08) 0%, transparent 70%)',
           filter: 'blur(60px)',
           animation: 'splashOrb3 7s ease-in-out infinite',
         }} />
@@ -163,7 +163,7 @@ export default function SplashScreen({ onComplete }) {
             width: `${p.size}px`,
             height: `${p.size}px`,
             borderRadius: '50%',
-            background: p.id % 3 === 0 ? '#6C63FF' : p.id % 3 === 1 ? '#0DCCB1' : '#8B84FF',
+            background: p.id % 3 === 0 ? '#66E8BC' : p.id % 3 === 1 ? '#62F1D4' : '#5EF09A',
             opacity: phase >= 1 ? p.opacity : 0,
             transition: `opacity 1s ease ${p.delay * 0.3}s`,
             animation: `splashParticle ${p.duration}s ease-in-out ${p.delay}s infinite`,
@@ -176,8 +176,8 @@ export default function SplashScreen({ onComplete }) {
       <div style={{
         position: 'absolute', inset: 0,
         backgroundImage: `
-          linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px)
+          linear-gradient(rgba(181,255,223,0.055) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(181,255,223,0.055) 1px, transparent 1px)
         `,
         backgroundSize: '60px 60px',
         opacity: phase >= 1 ? 0.6 : 0,
@@ -210,7 +210,7 @@ export default function SplashScreen({ onComplete }) {
           fontFamily: "'Syne', sans-serif",
           fontWeight: 800,
           letterSpacing: '-2px',
-          background: 'linear-gradient(135deg, #F1F0FF 0%, #6C63FF 50%, #0DCCB1 100%)',
+          background: 'linear-gradient(135deg, #F7FFFB 0%, #B5FFDF 48%, #66E8BC 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
@@ -221,7 +221,7 @@ export default function SplashScreen({ onComplete }) {
         <p style={{
           fontSize: '13px',
           fontFamily: "'Space Mono', monospace",
-          color: '#8B8BA7',
+          color: '#C2D8CD',
           letterSpacing: '4px',
           textTransform: 'uppercase',
           marginBottom: '24px',
@@ -235,7 +235,7 @@ export default function SplashScreen({ onComplete }) {
         <div style={{
           width: '160px',
           height: '2px',
-          background: 'rgba(108,99,255,0.15)',
+          background: 'rgba(102,232,188,0.18)',
           borderRadius: '1px',
           overflow: 'hidden',
           margin: '0 auto',
@@ -245,7 +245,7 @@ export default function SplashScreen({ onComplete }) {
           <div style={{
             height: '100%',
             borderRadius: '1px',
-            background: 'linear-gradient(90deg, #6C63FF, #0DCCB1)',
+            background: 'linear-gradient(90deg, #62F1D4, #66E8BC, #B5FFDF)',
             animation: 'splashLoad 2s ease-in-out both',
             transformOrigin: 'left',
           }} />
@@ -255,7 +255,7 @@ export default function SplashScreen({ onComplete }) {
         <p style={{
           fontSize: '10px',
           fontFamily: "'Space Mono', monospace",
-          color: '#4A4A6A',
+          color: '#8FA89B',
           marginTop: '16px',
           opacity: phase >= 2 ? 1 : 0,
           transition: 'opacity 0.4s ease 0.8s',
