@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import LeafletMap from './LeafletMap';
 import MapControls from './MapControls';
 import MapLegend from './MapLegend';
@@ -12,7 +12,6 @@ export default function ScamHeatmap({ refreshKey = 0 }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
-  const [feedPoints, setFeedPoints] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState('');
@@ -21,25 +20,13 @@ export default function ScamHeatmap({ refreshKey = 0 }) {
   const { data: intelligence } = useIntelligence(refreshKey);
   const liveStats = intelligence.live_stats[0] || {};
 
-  useEffect(() => {
-    const typeFor = (type) => {
-      const value = type.toLowerCase();
-      if (value.includes('cloned') || value.includes('voice')) return 'deepfake';
-      if (value.includes('investment')) return 'invest'; if (value.includes('romance')) return 'love';
-      if (value.includes('phish')) return 'phish'; if (value.includes('macau')) return 'macau'; return 'job';
-    };
-    fetch('/api/feed', { credentials: 'include' }).then(response => response.ok ? response.json() : []).then(items => {
-      const points = items.map((item, index) => ({ lat: item.lat, lng: item.lng, type: typeFor(item.scam_type), count: 1, area: item.region, date: item.date, title: item.title, id: `${item.region}-${index}` }));
-      setFeedPoints(points);
-    }).catch(() => {});
-  }, [refreshKey]);
   const requestLocation = () => {
     if (!navigator.geolocation) { setLocationError('Location is not supported by this browser.'); return; }
     setLocating(true); setLocationError('');
     navigator.geolocation.getCurrentPosition(position => { setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude }); setLocating(false); }, () => { setLocationError('Location permission was not granted. You can enable it in browser settings.'); setLocating(false); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   };
-  // Both the seed intelligence and harvested feed are now loaded from the database.
-  const mapPoints = useMemo(() => [...intelligence.map_points, ...feedPoints], [intelligence.map_points, feedPoints]);
+  // A seven-day database snapshot powers map pins and the statistics panel.
+  const mapPoints = intelligence.map_points;
   // Filter points by scam type
   const filteredPoints = useMemo(() => {
     if (activeFilter === 'all') return mapPoints;

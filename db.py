@@ -5,6 +5,8 @@ import logging
 import re
 import sqlite3
 import time
+from collections import Counter, defaultdict
+from datetime import date, timedelta
 from typing import Any
 from config import settings
 from contracts import FeedItem, User, Verdict
@@ -182,6 +184,76 @@ def get_feed(scam_type: str | None=None,limit:int=60) -> list[dict[str,Any]]:
     if scam_type: sql+=" AND lower(scam_type)=lower(?)";args=[scam_type]
     sql+=" ORDER BY date DESC, id DESC LIMIT ?";args.append(limit)
     with connection() as con: return [dict(r) for r in con.execute(sql,args).fetchall()]
+
+
+def weekly_intelligence_snapshot(days: int = 7) -> dict[str, list[dict[str, Any]]]:
+    """Return map/statistics records from the same recent feed rows.
+
+    Unlike the old design-time figures, every number returned here is computed
+    from ``feed_items``.  A report is considered recent when its source date is
+    today or in the preceding ``days - 1`` days.
+    """
+    today = date.today()
+    start = today - timedelta(days=max(1, days) - 1)
+    recent: list[dict[str, Any]] = []
+    for row in get_feed(limit=500):
+        try:
+            reported_on = date.fromisoformat(str(row.get("date", ""))[:10])
+        except ValueError:
+            continue
+        if start <= reported_on <= today:
+            recent.append({**row, "reported_on": reported_on})
+
+    def map_type(value: str) -> str:
+        normalized = value.lower()
+        if "cloned" in normalized or "voice" in normalized or "deepfake" in normalized:
+            return "deepfake"
+        if "invest" in normalized:
+            return "invest"
+        if "romance" in normalized or "love" in normalized:
+            return "love"
+        if "phish" in normalized:
+            return "phish"
+        if "macau" in normalized or "officer" in normalized:
+            return "macau"
+        return "job"
+
+    map_points = [
+        {"id": f"weekly-{index}", "lat": row["lat"], "lng": row["lng"], "type": map_type(row["scam_type"]),
+         "count": 1, "area": row["region"], "date": row["date"], "title": row["title"]}
+        for index, row in enumerate(recent, 1)
+    ]
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in recent:
+        grouped[str(row["region"])].append(row)
+    city_stats = [
+        {"id": region.lower().replace(" ", "-"), "city": region, "total": len(rows),
+         "topType": map_type(Counter(map_type(item["scam_type"]) for item in rows).most_common(1)[0][0]), "rank": rank}
+        for rank, (region, rows) in enumerate(sorted(grouped.items(), key=lambda item: (-len(item[1]), item[0])), 1)
+    ]
+    today_rows = [row for row in recent if row["reported_on"] == today]
+    with connection() as con:
+        check_row = con.execute("SELECT COUNT(*) AS total FROM checks WHERE created_at>=?", (time.mktime(today.timetuple()),)).fetchone()
+    most_affected = city_stats[0]["city"] if city_stats else "—"
+    live_stats = [{
+        "id": "current", "totalReportsToday": len(today_rows), "activeAlerts": len(recent),
+        "newSinceYesterday": len(today_rows), "mostAffectedCity": most_affected,
+        "topScamType": map_type(recent[0]["scam_type"]) if recent else "—",
+        "aiScansToday": int(check_row["total"]), "windowDays": days,
+    }]
+    # A six-month graph from the same persisted feed dates.  Months with no
+    # rows remain visible as zero rather than being filled with invented data.
+    month_keys: list[tuple[int, int]] = []
+    cursor = today.replace(day=1)
+    for _ in range(6):
+        month_keys.append((cursor.year, cursor.month))
+        cursor = (cursor - timedelta(days=1)).replace(day=1)
+    monthly_counts = Counter((row["reported_on"].year, row["reported_on"].month) for row in recent)
+    monthly_trend = [
+        {"id": f"{year}-{month:02d}", "month": date(year, month, 1).strftime("%b"), "value": monthly_counts[(year, month)]}
+        for year, month in reversed(month_keys)
+    ]
+    return {"map_points": map_points, "city_stats": city_stats, "live_stats": live_stats, "monthly_trend": monthly_trend}
 
 
 def registry_candidates(query: str, limit: int = 5) -> list[dict[str, Any]]:

@@ -17,7 +17,7 @@ from assistant.chat import stream_reply
 from auth import change_password, current_user, login, logout, mydigital_login, register
 from config import settings
 from contracts import FeedItem, User, Verdict
-from db import clear_user_history, create_check as db_create_check, get_check, get_feed, get_intelligence, get_user_settings, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_user_settings, save_verdict, set_language, top_identifier_match, update_user_name, upsert_feed
+from db import clear_user_history, create_check as db_create_check, get_check, get_feed, get_intelligence, get_user_settings, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_user_settings, save_verdict, set_language, top_identifier_match, update_user_name, upsert_feed, weekly_intelligence_snapshot
 from jobs.harvester import harvest
 from integrations.openrouter_client import extract_text_from_image
 from intelligence_engine import refresh_modus_operandi
@@ -246,8 +246,12 @@ def api_feed(type: str | None = None, limit: int = 60, djaga_session: str | None
 def api_intelligence(djaga_session: str | None = Cookie(None)):
     """Database-backed map, intelligence panel, and statistics data."""
     require_user(djaga_session)
-    kinds = ("map_points", "scam_types", "city_stats", "live_stats", "top_accounts", "top_phones", "monthly_trend")
+    kinds = ("scam_types", "top_accounts", "top_phones")
     payload = {kind: get_intelligence(kind) for kind in kinds}
+    # Map pins, state activity, and every Statistics number share one recent
+    # seven-day feed snapshot. This prevents UI-only fixture totals drifting
+    # away from what the user can actually see in the database-backed feed.
+    payload.update(weekly_intelligence_snapshot(days=7))
     payload["insights"] = get_intelligence("modus_operandi")
     return payload
 

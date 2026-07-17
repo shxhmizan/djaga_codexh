@@ -15,7 +15,8 @@ def test_auth_feed_and_mock_pipeline():
   r=client.post('/api/auth/register',json={'email':f'{uuid.uuid4()}@example.com','password':'longpassword','name':'Test User'});assert r.status_code==200
   assert client.get('/api/feed').status_code==200
   intelligence=client.get('/api/intelligence'); assert intelligence.status_code==200
-  assert len(intelligence.json()['map_points']) >= 90
+  assert len(intelligence.json()['map_points']) >= 5
+  assert intelligence.json()['live_stats'][0]['activeAlerts'] == len(intelligence.json()['map_points'])
   assert intelligence.json()['insights']
   assert intelligence.json()['insights'][0]['sources']
   assert intelligence.json()['insights'][0]['engine'] == 'feed-derived'
