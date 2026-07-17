@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Phone, MapPin, Calendar, Share2, CheckCircle } from 'lucide-react';
+import { AlertTriangle, Phone, MapPin, Calendar, CheckCircle } from 'lucide-react';
 import Badge from '../ui/Badge';
 import { useTranslation } from '../../hooks/useTranslation';
 
@@ -88,19 +88,13 @@ export default function ScamAlert({ alert }) {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
+          <div className="flex items-center text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
             <div className="flex items-center gap-3">
               <span>{alert.aiClassified ? 'AI analysis: usable scam indicators found' : `${alert.reportCount} feed record`}</span>
               <span className="flex items-center gap-1">
                 <Calendar size={10} /> {alert.date}
               </span>
             </div>
-            <button
-              className="p-1.5 rounded-lg hover:bg-[rgba(255,255,255,0.06)] min-w-[44px] min-h-[44px] flex items-center justify-center"
-              style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              <Share2 size={14} style={{ color: 'var(--text-tertiary)' }} />
-            </button>
           </div>
         </div>
       </div>
