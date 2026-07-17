@@ -61,7 +61,11 @@ export function useScanner() {
         const imageEvidence = type === 'image'
           ? verdict.evidence?.find((item) => item.agent === 'image_forensics')
           : null;
+        const voiceEvidence = type === 'voice'
+          ? verdict.evidence?.find((item) => item.agent === 'forensics')
+          : null;
         const imagePayload = imageEvidence?.details || imageEvidence?.payload || imageEvidence || {};
+        const voicePayload = voiceEvidence?.details || voiceEvidence?.payload || voiceEvidence || {};
         const syntheticProbability = Number(
           imagePayload.synthetic_probability ?? imageEvidence?.score ?? 0,
         );
@@ -84,6 +88,13 @@ export function useScanner() {
             model: imagePayload.model,
             provider: imagePayload.provider,
             available: true,
+          } : null,
+          voiceAnalysis: type === 'voice' && voiceEvidence ? {
+            summary: voicePayload.voice_summary,
+            transcript: verdict.excerpt || voicePayload.transcript,
+            patterns: voicePayload.patterns || [],
+            provider: voicePayload.provider,
+            model: voicePayload.model,
           } : null,
           traceUrl: `/trace/${session_id}`,
         });

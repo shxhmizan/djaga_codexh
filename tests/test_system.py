@@ -166,9 +166,11 @@ def test_openrouter_voice_result_is_schema_checked():
  result = _voice_analysis_result({
   'acoustic_score': .41,
   'transcript': 'Please transfer RM300 now.',
+  'voice_summary': 'The caller asks the listener to transfer money.',
   'patterns': ['payment pressure'],
   'artifacts': ['short clip'],
   'claim': 'The clip contains a request for money.',
  })
  assert result['acoustic_score'] == .41
  assert result['transcript'].startswith('Please transfer')
+ assert result['voice_summary'].startswith('The caller asks')

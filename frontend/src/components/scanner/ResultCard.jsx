@@ -42,6 +42,7 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
   const isVoiceScan = result.type === 'voice';
   const isImageScan = result.type === 'image';
   const imageAnalysis = result.imageAnalysis;
+  const voiceAnalysis = result.voiceAnalysis;
   const syntheticProbability = imageAnalysis?.syntheticProbability;
   const imageModelFlagsSynthetic = typeof syntheticProbability === 'number' && syntheticProbability >= 0.5;
   const statusLabel = isImageScan
@@ -116,6 +117,21 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
                 size={140}
                 label={isImageScan ? 'Overall investigation risk' : ''}
               />
+            </div>
+          )}
+
+          {isVoiceScan && (voiceAnalysis?.summary || voiceAnalysis?.transcript) && (
+            <div className="mb-5 rounded-xl px-4 py-4" style={{ background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.10)' }}>
+              <h4 className="text-xs uppercase tracking-wider" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', letterSpacing: '1.2px' }}>What this voice note is about</h4>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                {voiceAnalysis.summary || 'DJAGA transcribed the following message from the voice note.'}
+              </p>
+              {voiceAnalysis.transcript && (
+                <p className="mt-3 text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="font-semibold" style={{ color: 'var(--text-tertiary)' }}>Transcript: </span>
+                  {voiceAnalysis.transcript}
+                </p>
+              )}
             </div>
           )}
 

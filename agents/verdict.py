@@ -39,6 +39,12 @@ class VerdictAgent:
                     for key in ("synthetic_probability", "top_label", "top_label_probability", "predictions", "model", "provider", "image_size")
                     if key in result.payload
                 }
+            if name == "forensics":
+                item["details"] = {
+                    key: result.payload.get(key)
+                    for key in ("voice_summary", "transcript", "patterns", "artifacts", "model", "provider")
+                    if key in result.payload
+                }
             evidence.append(item)
         transcript = results.get("transcribe", AgentResult(agent="transcribe")).payload.get("transcript") or text
         return Verdict(

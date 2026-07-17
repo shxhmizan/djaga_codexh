@@ -28,6 +28,7 @@ class ForensicsAgent:
             payload={
                 "acoustic_score": score,
                 "transcript": result["transcript"],
+                "voice_summary": result["voice_summary"],
                 "patterns": result["patterns"],
                 "artifacts": artifacts,
                 "provider": result["provider"],
