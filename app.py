@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import json
 import re
 import time
@@ -14,6 +15,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from assistant.chat import stream_reply
+from assistant.tools import voice_grounding_context
 from auth import change_password, current_user, login, logout, mydigital_login, register
 from config import settings
 from contracts import FeedItem, User, Verdict
@@ -437,7 +439,21 @@ async def chat_listen(audio: UploadFile = File(...), djaga_session: str | None =
 async def elevenlabs_conversation(djaga_session: str | None = Cookie(None)):
     require_user(djaga_session)
     from integrations.elevenlabs_client import conversation_config
-    return await conversation_config()
+    return await conversation_config(voice_grounding_context()["context"])
+
+
+@app.post("/api/elevenlabs/tools/feed-search")
+async def elevenlabs_feed_search(payload: dict, request: Request):
+    """ElevenLabs custom-tool callback for live Supabase/feed grounding.
+
+    Configure this endpoint in the ElevenLabs Agent dashboard with the
+    ``x-djaga-tool-secret`` header. It intentionally returns public feed data
+    only—never a DJAGA user's profile, chat, or saved checks.
+    """
+    secret = request.headers.get("x-djaga-tool-secret", "")
+    if not settings.elevenlabs_tool_secret or not hmac.compare_digest(secret, settings.elevenlabs_tool_secret):
+        raise HTTPException(401, "Invalid ElevenLabs tool credential")
+    return voice_grounding_context(str(payload.get("query", "")))
 
 
 @app.get("/api/demo/stream")

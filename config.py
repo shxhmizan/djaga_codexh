@@ -27,6 +27,9 @@ class Settings:
     el_voice_id: str = os.getenv("EL_VOICE_ID", "")
     elevenlabs_agent_id: str = os.getenv("ELEVENLABS_AGENT_ID", "")
     elevenlabs_branch_id: str = os.getenv("ELEVENLABS_BRANCH_ID", "")
+    # Shared only with the ElevenLabs custom-tool configuration. It protects
+    # the public-feed lookup endpoint from arbitrary internet callers.
+    elevenlabs_tool_secret: str = os.getenv("ELEVENLABS_TOOL_SECRET", "")
     exa_api_key: str = os.getenv("EXA_API_KEY", "")
     # Hugging Face models are loaded lazily so mock-mode installs stay fast and
     # never download model weights during startup.

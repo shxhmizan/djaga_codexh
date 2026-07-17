@@ -118,8 +118,9 @@ export default function Chat() {
       const response = await fetch('/api/elevenlabs/conversation', { credentials: 'include' });
       const config = await response.json();
       if (!response.ok) throw new Error(config.detail || 'Voice agent is not configured.');
-      if (config.signed_url) await conversation.startSession({ signedUrl: config.signed_url });
-      else await conversation.startSession({ agentId: config.agent_id });
+      const dynamicVariables = config.dynamic_variables || {};
+      if (config.signed_url) await conversation.startSession({ signedUrl: config.signed_url, dynamicVariables });
+      else await conversation.startSession({ agentId: config.agent_id, dynamicVariables });
     } catch (error) {
       setNotice(error.message || 'Unable to start the ElevenLabs voice agent.');
     }
