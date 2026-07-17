@@ -29,3 +29,33 @@ def voice_grounding_context(query: str = "") -> dict:
  } for row in records[:8]]
  lines = [f"{item['date']} | {item['region']} | {item['type']}: {item['title']} — {item['summary']}" for item in reports]
  return {"window_days": 7, "report_count": len(reports), "reports": reports, "context": "\n".join(lines) or "No current public feed reports matched the query."}
+
+
+def knowledge_base_snapshot() -> str:
+ """Readable public intelligence snapshot for an ElevenLabs Knowledge Base.
+
+ The content is deliberately public-feed only. It never contains user checks,
+ private reports, contact details, or any credential for Supabase.
+ """
+ records = get_recent_feed(days=7, limit=80)
+ header = [
+  "DJAGA — Malaysian Scam Intelligence Snapshot",
+  "This document contains public, unverified community and advisory intelligence from the last 7 days.",
+  "Use it for safety guidance, not as proof that a specific person or number is fraudulent.",
+  "For an urgent transfer, tell the user to contact their bank through its official number and call NSRC 997.",
+  "",
+  f"Reports in this snapshot: {len(records)}",
+  "",
+ ]
+ if not records:
+  return "\n".join(header + ["No current public reports are available."])
+ entries = []
+ for index, row in enumerate(records, 1):
+  entries.extend([
+   f"{index}. {row['title']}",
+   f"Type: {row['scam_type']} | Area: {row['region']} | Reported: {row['date']}",
+   f"Summary: {row['summary']}",
+   f"Reference: {row['source_url']}",
+   "",
+  ])
+ return "\n".join(header + entries)

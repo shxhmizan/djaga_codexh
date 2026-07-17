@@ -124,3 +124,11 @@ def test_elevenlabs_voice_configuration_requires_login_only():
   client.post('/api/auth/register',json={'email':f'{uuid.uuid4()}@example.com','password':'longpassword','name':'Test User'})
   config = client.get('/api/elevenlabs/conversation')
   assert config.status_code == 200 and config.json()['agent_id'].startswith('agent_')
+
+
+def test_elevenlabs_knowledge_base_snapshot_is_public_text():
+ with TestClient(app) as client:
+  response = client.get('/api/elevenlabs/knowledge-base.txt')
+  assert response.status_code == 200
+  assert response.headers['content-type'].startswith('text/plain')
+  assert 'DJAGA — Malaysian Scam Intelligence Snapshot' in response.text

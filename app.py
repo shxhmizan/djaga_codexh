@@ -11,11 +11,11 @@ from io import BytesIO
 from pathlib import Path
 
 from fastapi import Cookie, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from assistant.chat import stream_reply
-from assistant.tools import voice_grounding_context
+from assistant.tools import knowledge_base_snapshot, voice_grounding_context
 from auth import change_password, current_user, login, logout, mydigital_login, register
 from config import settings
 from contracts import FeedItem, User, Verdict
@@ -454,6 +454,15 @@ async def elevenlabs_feed_search(payload: dict, request: Request):
     if not settings.elevenlabs_tool_secret or not hmac.compare_digest(secret, settings.elevenlabs_tool_secret):
         raise HTTPException(401, "Invalid ElevenLabs tool credential")
     return voice_grounding_context(str(payload.get("query", "")))
+
+
+@app.get("/api/elevenlabs/knowledge-base.txt", response_class=PlainTextResponse)
+def elevenlabs_knowledge_base() -> PlainTextResponse:
+    """Public 7-day feed snapshot for ElevenLabs' URL-based Knowledge Base."""
+    return PlainTextResponse(
+        knowledge_base_snapshot(),
+        headers={"Cache-Control": "public, max-age=300"},
+    )
 
 
 @app.get("/api/demo/stream")
