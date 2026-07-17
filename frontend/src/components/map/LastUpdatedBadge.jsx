@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 
-export default function LastUpdatedBadge() {
+export default function LastUpdatedBadge({ updatedAt }) {
   const [now, setNow] = useState(new Date());
-  const [lastUpdate] = useState(new Date(Date.now() - 3 * 60000));
+  const lastUpdate = updatedAt ? new Date(updatedAt) : now;
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
@@ -23,7 +23,7 @@ export default function LastUpdatedBadge() {
     });
   };
 
-  const timeSince = Math.floor((now - lastUpdate) / 1000);
+  const timeSince = Math.max(0, Math.floor((now - lastUpdate) / 1000));
   const minutesSince = Math.floor(timeSince / 60);
   const secondsSince = timeSince % 60;
   const sinceText = minutesSince > 0

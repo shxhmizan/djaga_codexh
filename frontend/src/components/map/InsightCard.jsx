@@ -97,7 +97,7 @@ export default function InsightCard({ insight, index, isHighlighted }) {
           📍 {insight.affectedArea}
         </span>
         <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontFamily: "'Space Mono', monospace" }}>
-          {insight.affectedCount.toLocaleString()} affected
+          {(insight.evidenceCount ?? insight.affectedCount ?? 0).toLocaleString()} {insight.evidenceLabel || 'affected'}
         </span>
       </div>
 
@@ -124,7 +124,7 @@ export default function InsightCard({ insight, index, isHighlighted }) {
 
       {/* Recommendation */}
       {expanded && (
-        <div style={{
+        <><div style={{
           padding: '10px 12px',
           background: 'var(--bg-tertiary)',
           borderRadius: '8px',
@@ -134,7 +134,7 @@ export default function InsightCard({ insight, index, isHighlighted }) {
           <span style={{ fontSize: '11px', fontStyle: 'italic', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
             💡 {insight.recommendation}
           </span>
-        </div>
+        </div>{insight.sources?.length > 0 && <div style={{padding:'9px 0 3px',marginBottom:'7px'}}><div style={{fontSize:'9px',fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',color:'var(--text-tertiary)',marginBottom:'5px'}}>Feed references</div>{insight.sources.map((source, sourceIndex) => <a key={`${source.url}-${sourceIndex}`} href={source.url} target="_blank" rel="noreferrer" style={{display:'block',fontSize:'10px',lineHeight:1.45,color:'var(--accent)',textDecoration:'none',padding:'3px 0'}}>↗ {source.title || source.url}</a>)}</div>}</>
       )}
 
       {/* Bottom */}

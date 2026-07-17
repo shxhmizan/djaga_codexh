@@ -3,6 +3,7 @@ os.environ['DJAGA_DB_PATH']='/tmp/djaga-test.db'
 os.environ['MOCK_DELAY_SCALE']='0'
 os.environ['IMAGE_FORENSICS_MODE']='mock'
 os.environ['OSINT_MODE']='mock'
+os.environ['OPENROUTER_API_KEY']=''
 # Tests must remain self-contained even when a developer has configured a
 # Supabase connection in their local .env file.
 os.environ['SUPABASE_DB_URL']=''
@@ -15,7 +16,9 @@ def test_auth_feed_and_mock_pipeline():
   assert client.get('/api/feed').status_code==200
   intelligence=client.get('/api/intelligence'); assert intelligence.status_code==200
   assert len(intelligence.json()['map_points']) >= 90
-  assert len(intelligence.json()['insights']) >= 6
+  assert intelligence.json()['insights']
+  assert intelligence.json()['insights'][0]['sources']
+  assert intelligence.json()['insights'][0]['engine'] == 'feed-derived'
   analysis=client.post('/api/reports/analyze', json={'description':'A caller claiming to be PDRM asked me to transfer money urgently.'})
   assert analysis.status_code == 200 and analysis.json()['type'] == 'macau_scam'
   report=client.post('/api/reports', json={'description':'A caller claiming to be PDRM asked me to transfer money urgently.', 'location':'Ipoh', 'consent_public':True})

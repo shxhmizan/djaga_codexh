@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 const EMPTY = { map_points: [], scam_types: [], city_stats: [], insights: [], live_stats: [], top_accounts: [], top_phones: [], monthly_trend: [] };
 
 /** Fetches all product intelligence from the application database. */
-export default function useIntelligence() {
+export default function useIntelligence(refreshKey = 0) {
   const [data, setData] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
 
@@ -15,7 +15,7 @@ export default function useIntelligence() {
       .catch(() => { if (active) setData(EMPTY); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [refreshKey]);
 
   return { data, loading };
 }

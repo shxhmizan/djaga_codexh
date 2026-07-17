@@ -21,18 +21,13 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = process.argv[1];
 const load = name => import(pathToFileURL(path.join(root, 'src', 'data', name)).href);
-const [map, insights, feed, gov] = await Promise.all([
-  load('dummyMapData.js'), load('dummyAIInsights.js'), load('dummyScamFeed.js'),
-  load('dummyGovCheck.js'),
-]);
+const [map, feed] = await Promise.all([load('dummyMapData.js'), load('dummyScamFeed.js')]);
 console.log(JSON.stringify({
   map_points: map.SCAM_POINTS.map((point, index) => ({ id: `point-${index + 1}`, ...point })),
   scam_types: Object.entries(map.SCAM_TYPES).map(([id, value]) => ({ id, ...value })),
   city_stats: map.CITY_STATS.map(item => ({ id: item.city.toLowerCase().replaceAll(' ', '-'), ...item })),
-  insights: insights.AI_INSIGHTS.map(item => ({ ...item, generatedAt: new Date(item.generatedAt).toISOString() })),
-  live_stats: [{ id: 'current', ...insights.LIVE_STATS }],
+  live_stats: [{ id: 'current', totalReportsToday: 847, activeAlerts: 23, newSinceYesterday: 134, mostAffectedCity: 'Kuala Lumpur', topScamType: 'macau', aiScansToday: 3241 }],
   feed: feed.SCAM_FEED,
-  gov_checks: gov.GOV_CHECKS,
   top_accounts: [['512802774281',47],['17900052144',20],['26700077605',15],['1013041100083926',15],['26444100022578',14],['25810500018077',14],['21220000087743',13],['8881032092097',12],['4946775140',11]].map(([identifier,reports],index)=>({id:`account-${index+1}`,identifier,reports})),
   top_phones: [['0104269914',21],['0179764986',17],['01123520121',15],['01161051865',9],['0163411403',9],['0142897177',9],['0142472412',9],['01125054956',9],['0142447614',8],['28042221522',8]].map(([identifier,reports],index)=>({id:`phone-${index+1}`,identifier,reports})),
   monthly_trend: [{month:'Feb',value:412},{month:'Mar',value:505},{month:'Apr',value:468},{month:'May',value:621},{month:'Jun',value:714},{month:'Jul',value:847}].map(item=>({id:item.month.toLowerCase(),...item})),
@@ -76,7 +71,7 @@ def migrate() -> dict[str, int]:
 
 
 def ensure_seeded() -> dict[str, int]:
-    required = ("map_points", "scam_types", "city_stats", "insights", "live_stats", "top_accounts", "top_phones", "monthly_trend")
+    required = ("map_points", "scam_types", "city_stats", "live_stats", "top_accounts", "top_phones", "monthly_trend")
     # Earlier builds seeded only map points. Complete those installations rather
     # than treating a partially populated table as a completed migration.
     return {} if all(get_intelligence(kind) for kind in required) else migrate()

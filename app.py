@@ -20,6 +20,7 @@ from contracts import FeedItem, User, Verdict
 from db import create_check as db_create_check, get_check, get_feed, get_intelligence, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_verdict, set_language, top_identifier_match, upsert_feed
 from jobs.harvester import harvest
 from integrations.openrouter_client import extract_text_from_image
+from intelligence_engine import refresh_modus_operandi
 from pipeline import manager
 from report_analyzer import analyze_report, coordinates_for
 
@@ -40,6 +41,7 @@ async def startup() -> None:
     # Seed data is part of a usable zero-key installation, not an API-response mock.
     harvest(seed_only=True)
     normalize_feed_source_names()
+    await refresh_modus_operandi()
 
 
 def require_user(token: str | None) -> User:
@@ -213,14 +215,24 @@ def api_feed(type: str | None = None, limit: int = 60, djaga_session: str | None
 def api_intelligence(djaga_session: str | None = Cookie(None)):
     """Database-backed map, intelligence panel, and statistics data."""
     require_user(djaga_session)
-    kinds = ("map_points", "scam_types", "city_stats", "insights", "live_stats", "top_accounts", "top_phones", "monthly_trend")
-    return {kind: get_intelligence(kind) for kind in kinds}
+    kinds = ("map_points", "scam_types", "city_stats", "live_stats", "top_accounts", "top_phones", "monthly_trend")
+    payload = {kind: get_intelligence(kind) for kind in kinds}
+    payload["insights"] = get_intelligence("modus_operandi")
+    return payload
 
 
 @app.post("/api/feed/refresh")
 async def refresh_feed(djaga_session: str | None = Cookie(None)):
     require_user(djaga_session)
-    return await asyncio.to_thread(harvest)
+    result = await asyncio.to_thread(harvest)
+    result["modus_operandi"] = await refresh_modus_operandi()
+    return result
+
+
+@app.post("/api/intelligence/modus-operandi/refresh")
+async def refresh_modus_operandi_api(djaga_session: str | None = Cookie(None)):
+    require_user(djaga_session)
+    return await refresh_modus_operandi(force=True)
 
 
 @app.post("/api/reports/analyze")

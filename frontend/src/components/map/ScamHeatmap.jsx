@@ -17,7 +17,7 @@ export default function ScamHeatmap({ refreshKey = 0 }) {
   const [locationError, setLocationError] = useState('');
 
   const { theme } = useApp();
-  const { data: intelligence } = useIntelligence();
+  const { data: intelligence } = useIntelligence(refreshKey);
   const liveStats = intelligence.live_stats[0] || {};
 
   useEffect(() => {

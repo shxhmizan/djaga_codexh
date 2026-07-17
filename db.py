@@ -219,6 +219,27 @@ def upsert_intelligence(kind: str, records: list[dict[str, Any]], key: str = "id
     return len(records)
 
 
+def replace_intelligence(kind: str, records: list[dict[str, Any]], key: str = "id") -> int:
+    """Atomically replace one derived intelligence collection."""
+    now = time.time()
+    with connection() as con:
+        con.execute("DELETE FROM intelligence_records WHERE kind=?", (kind,))
+        for index, record in enumerate(records):
+            record_key = str(record.get(key, index))
+            payload = json.dumps(record)
+            if IS_POSTGRES:
+                con.execute(
+                    "INSERT INTO intelligence_records (kind,record_key,payload,updated_at) VALUES (?,?,?::jsonb,?)",
+                    (kind, record_key, payload, now),
+                )
+            else:
+                con.execute(
+                    "INSERT INTO intelligence_records (kind,record_key,payload,updated_at) VALUES (?,?,?,?)",
+                    (kind, record_key, payload, now),
+                )
+    return len(records)
+
+
 def get_intelligence(kind: str) -> list[dict[str, Any]]:
     with connection() as con:
         rows = con.execute(
