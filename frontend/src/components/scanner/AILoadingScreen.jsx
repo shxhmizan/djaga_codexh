@@ -54,7 +54,11 @@ export default function AILoadingScreen({ type = 'image', fileName, text, onComp
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [onComplete]);
+  // This overlay receives an inline cancel callback from each scanner page.
+  // Depending on that callback would restart the visual clock whenever the
+  // page re-renders, making a still-running backend scan appear to begin
+  // again. The overlay only mounts once per scan, so initialise once here.
+  }, []);
 
   // Pulsing dots
   useEffect(() => {
