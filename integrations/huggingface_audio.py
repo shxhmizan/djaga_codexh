@@ -4,9 +4,17 @@ from __future__ import annotations
 import asyncio
 import io
 import os
+import threading
+from functools import lru_cache
 from typing import Any
 
 from config import settings
+
+
+# The audio graph starts forensics and transcription in parallel. Transformers'
+# lazy module loader is not safe when two distinct model families are imported
+# for the first time from separate worker threads.
+_TRANSFORMERS_LOAD_LOCK = threading.Lock()
 
 
 def _spoof_label(label: str) -> bool:
@@ -14,13 +22,25 @@ def _spoof_label(label: str) -> bool:
     return any(word in value for word in ("spoof", "fake", "deepfake", "synthetic", "bonafide_false")) and "bonafide" not in value and "real" not in value
 
 
+@lru_cache(maxsize=1)
+def _forensics_components():
+    """Load the anti-spoof classifier once; inference requests reuse it."""
+    with _TRANSFORMERS_LOAD_LOCK:
+        from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
+        extractor = AutoFeatureExtractor.from_pretrained(settings.voice_model_id, token=settings.hf_token or None)
+        model = AutoModelForAudioClassification.from_pretrained(settings.voice_model_id, token=settings.hf_token or None)
+    labels = {int(key): value for key, value in model.config.id2label.items()}
+    return extractor, model, labels
+
+
 def _classify(blob: bytes) -> dict[str, Any]:
     try:
-        os.environ.setdefault("USE_TF", "0")
-        import numpy as np
-        import soundfile as sf
-        from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
-        import torch
+        with _TRANSFORMERS_LOAD_LOCK:
+            os.environ.setdefault("USE_TF", "0")
+            import numpy as np
+            import soundfile as sf
+            from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
+            import torch
     except ImportError as exc:
         raise RuntimeError("Install soundfile, torch, and transformers for audio forensics") from exc
     # soundfile handles WAV/FLAC/OGG through wheels without ffmpeg. An iOS M4A
@@ -35,9 +55,7 @@ def _classify(blob: bytes) -> dict[str, Any]:
         sample_rate = 16_000
     if samples.size < 1600:
         raise RuntimeError("Audio is too short for anti-spoofing analysis")
-    extractor = AutoFeatureExtractor.from_pretrained(settings.voice_model_id, token=settings.hf_token or None)
-    model = AutoModelForAudioClassification.from_pretrained(settings.voice_model_id, token=settings.hf_token or None)
-    labels = {int(key): value for key, value in model.config.id2label.items()}
+    extractor, model, labels = _forensics_components()
     segment_size = sample_rate * 4
     scores: list[float] = []
     labels_seen: list[str] = []
@@ -62,3 +80,59 @@ async def classify_audio(blob: bytes) -> dict[str, Any]:
     if not blob:
         raise RuntimeError("No audio bytes were supplied")
     return await asyncio.to_thread(_classify, blob)
+
+
+@lru_cache(maxsize=1)
+def _local_asr_pipeline():
+    """Load a small multilingual Whisper model once for keyless local STT."""
+    try:
+        with _TRANSFORMERS_LOAD_LOCK:
+            # This project uses PyTorch. Avoid importing an unrelated local
+            # TensorFlow installation (and its protobuf ABI) through pipeline().
+            os.environ.setdefault("USE_TF", "0")
+            from transformers import pipeline
+            return pipeline(
+                "automatic-speech-recognition",
+                model=settings.local_asr_model,
+                token=settings.hf_token or None,
+                device=-1,
+            )
+    except (ImportError, RuntimeError) as exc:
+        raise RuntimeError(f"Local transcription setup is unavailable: {exc}") from exc
+
+
+def _transcribe_local(blob: bytes) -> str:
+    try:
+        import numpy as np
+        import soundfile as sf
+    except ImportError as exc:
+        raise RuntimeError("Install soundfile and numpy for local transcription") from exc
+    samples, sample_rate = sf.read(io.BytesIO(blob), dtype="float32", always_2d=False)
+    if getattr(samples, "ndim", 1) > 1:
+        samples = np.mean(samples, axis=1)
+    if sample_rate != 16_000:
+        target_length = max(1, round(len(samples) * 16_000 / sample_rate))
+        samples = np.interp(
+            np.linspace(0, len(samples) - 1, target_length),
+            np.arange(len(samples)),
+            samples,
+        ).astype("float32")
+        sample_rate = 16_000
+    if len(samples) < sample_rate // 2:
+        raise RuntimeError("Audio is too short to transcribe")
+    output = _local_asr_pipeline()(
+        {"raw": samples, "sampling_rate": sample_rate},
+        generate_kwargs={"task": "transcribe", "language": "malay"},
+    )
+    transcript = str(output.get("text", "")).strip()
+    if not transcript:
+        raise RuntimeError("Local transcription returned no speech")
+    return transcript
+
+
+async def transcribe_local_audio(blob: bytes, content_type: str) -> str:
+    if not blob:
+        raise RuntimeError("No audio bytes were supplied")
+    # libsndfile supports WAV/FLAC/OGG from pure Python wheels. M4A remains a
+    # Scribe-strength input because no ffmpeg/system codec is available.
+    return await asyncio.to_thread(_transcribe_local, blob)

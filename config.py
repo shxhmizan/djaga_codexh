@@ -27,6 +27,9 @@ class Settings:
     el_voice_id: str = os.getenv("EL_VOICE_ID", "")
     elevenlabs_agent_id: str = os.getenv("ELEVENLABS_AGENT_ID", "")
     elevenlabs_branch_id: str = os.getenv("ELEVENLABS_BRANCH_ID", "")
+    # Keyless local fallback for voice-note transcription. It is intentionally
+    # smaller than a hosted Scribe model so a developer can run DJAGA offline.
+    local_asr_model: str = os.getenv("LOCAL_ASR_MODEL", "openai/whisper-tiny")
     # Shared only with the ElevenLabs custom-tool configuration. It protects
     # the public-feed lookup endpoint from arbitrary internet callers.
     elevenlabs_tool_secret: str = os.getenv("ELEVENLABS_TOOL_SECRET", "")
