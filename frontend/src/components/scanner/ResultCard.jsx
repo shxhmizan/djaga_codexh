@@ -119,20 +119,6 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
             </div>
           )}
 
-          {/* Keep the model posterior separate from the fused scam-risk gauge. */}
-          {isImageScan && imageAnalysis?.available && (
-            <div className="mb-5 rounded-xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}>
-              <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', letterSpacing: '1.2px' }}>Image model result</p>
-              <p className="mt-2 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {imageAnalysis.topLabel || 'Image classification'} · {Math.round((imageAnalysis.topLabelProbability || 0) * 100)}%
-              </p>
-              <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Synthetic-image probability: {Math.round((syntheticProbability || 0) * 100)}%. This is the classifier output, separate from any web or scam-context evidence.
-              </p>
-              {imageAnalysis.provider && <p className="mt-2 text-[11px]" style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>Source: {imageAnalysis.provider}{imageAnalysis.model ? ` · ${imageAnalysis.model}` : ''}</p>}
-            </div>
-          )}
-
           {/* Scam type badge (text scans) */}
           {isTextScan && result.scamType && (
             <div className="flex justify-center mb-4">
