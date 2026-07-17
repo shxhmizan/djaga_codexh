@@ -21,16 +21,25 @@ class VerdictAgent:
         total_weight = sum(weights[name] for name in available) or 1.0
         risk = sum((weights[name] / total_weight) * float(result.score) for name, result in available.items())
         level = "danger" if risk >= settings.danger_threshold else "caution" if risk >= settings.caution_threshold else "safe"
-        evidence = [
-            {
+        evidence = []
+        for name, result in available.items():
+            item = {
                 "agent": name,
                 "claim": result.payload.get("claim", f"{name.replace('_', ' ').title()} signal."),
                 "weight_contribution": round((weights[name] / total_weight) * float(result.score), 3),
                 "score": result.score,
                 "mock": bool(result.payload.get("mock", False)),
             }
-            for name, result in available.items()
-        ]
+            # The browser must be able to distinguish the actual image-model
+            # posterior from the fused verdict. Persist only reviewable model
+            # metadata, never the uploaded image bytes.
+            if name == "image_forensics":
+                item["details"] = {
+                    key: result.payload.get(key)
+                    for key in ("synthetic_probability", "top_label", "top_label_probability", "predictions", "model", "image_size")
+                    if key in result.payload
+                }
+            evidence.append(item)
         transcript = results.get("transcribe", AgentResult(agent="transcribe")).payload.get("transcript") or text
         return Verdict(
             risk=round(risk, 3),

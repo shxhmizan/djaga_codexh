@@ -58,12 +58,33 @@ export function useScanner() {
         if (data.status !== 'done') return;
         const verdict = data.evidence?.verdict;
         if (!verdict) return;
+        const imageEvidence = type === 'image'
+          ? verdict.evidence?.find((item) => item.agent === 'image_forensics')
+          : null;
+        const imagePayload = imageEvidence?.details || imageEvidence?.payload || imageEvidence || {};
+        const syntheticProbability = Number(
+          imagePayload.synthetic_probability ?? imageEvidence?.score ?? 0,
+        );
         setResult({
           id: session_id, type, timestamp: new Date().toISOString(), live: true,
-          verdict: verdict.level === 'danger' ? (type === 'image' || type === 'voice' ? 'fake' : 'scam') : 'safe',
+          // An overall risk verdict is not automatically an image-model claim.
+          // Only label an image "fake" when the authenticity model itself
+          // assigned at least 50% synthetic probability.
+          verdict: verdict.level === 'danger'
+            ? (type === 'image' && syntheticProbability >= 0.5 ? 'fake' : type === 'voice' ? 'fake' : 'scam')
+            : 'safe',
           confidence: Math.round(verdict.risk * 100), highlights: verdict.evidence.map(item => item.claim),
           duration: Math.round((Date.now() - requestAt) / 1000), filename: options.fileName, text: options.text,
-          evidence: verdict.evidence, traceUrl: `/trace/${session_id}`,
+          evidence: verdict.evidence,
+          riskLevel: verdict.level,
+          imageAnalysis: type === 'image' && imageEvidence ? {
+            syntheticProbability,
+            topLabel: imagePayload.top_label,
+            topLabelProbability: Number(imagePayload.top_label_probability ?? 0),
+            model: imagePayload.model,
+            available: true,
+          } : null,
+          traceUrl: `/trace/${session_id}`,
         });
         setProgress(100); setIsScanning(false); setPhase(null); stream.close();
       });

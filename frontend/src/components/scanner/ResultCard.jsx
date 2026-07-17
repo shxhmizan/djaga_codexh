@@ -40,9 +40,16 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
   const highlights = result.highlights || result.matchedKeywords || [];
   const isTextScan = result.type === 'text';
   const isVoiceScan = result.type === 'voice';
-  const statusLabel = isVoiceScan
+  const isImageScan = result.type === 'image';
+  const imageAnalysis = result.imageAnalysis;
+  const syntheticProbability = imageAnalysis?.syntheticProbability;
+  const imageModelFlagsSynthetic = typeof syntheticProbability === 'number' && syntheticProbability >= 0.5;
+  const statusLabel = isImageScan
+    ? (imageModelFlagsSynthetic ? 'LIKELY SYNTHETIC IMAGE' : 'IMAGE MODEL: NO STRONG SYNTHETIC SIGNAL')
+    : isVoiceScan
     ? (threat ? 'POTENTIAL VOICE SCAM' : 'NO STRONG VOICE SCAM SIGNAL')
     : threat ? 'DEEPFAKE DETECTED' : isTextScan ? (result.verdict === 'scam' ? 'SCAM DETECTED' : 'MESSAGE SAFE') : 'AUTHENTIC IMAGE';
+  const imageHeadline = imageModelFlagsSynthetic ? 'SYNTHETIC RISK' : 'NO STRONG AI SIGNAL';
 
   return (
     <div className="relative">
@@ -96,7 +103,7 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
                 letterSpacing: '-1px',
               }}
             >
-              {isVoiceScan ? (threat ? 'SCAM RISK' : 'SAFE') : verdictText}
+              {isImageScan ? imageHeadline : isVoiceScan ? (threat ? 'SCAM RISK' : 'SAFE') : verdictText}
             </h2>
           </div>
 
@@ -107,7 +114,21 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
                 value={result.confidence}
                 color={color}
                 size={140}
+                label={isImageScan ? 'Overall investigation risk' : ''}
               />
+            </div>
+          )}
+
+          {/* Keep the model posterior separate from the fused scam-risk gauge. */}
+          {isImageScan && imageAnalysis?.available && (
+            <div className="mb-5 rounded-xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}>
+              <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', letterSpacing: '1.2px' }}>Image model result</p>
+              <p className="mt-2 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {imageAnalysis.topLabel || 'Image classification'} · {Math.round((imageAnalysis.topLabelProbability || 0) * 100)}%
+              </p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Synthetic-image probability: {Math.round((syntheticProbability || 0) * 100)}%. This is the classifier output, separate from any web or scam-context evidence.
+              </p>
             </div>
           )}
 
@@ -176,14 +197,14 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                   {threat
-                    ? (isVoiceScan ? 'Pause the conversation. Do not transfer money or share verification codes.' : isTextScan ? 'Jangan transfer wang. Hubungi PDRM di 999.' : 'Jangan percaya imej ini.')
-                    : (isVoiceScan ? 'No strong scam signal was found in this voice note.' : isTextScan ? 'Mesej ini kelihatan selamat.' : 'Imej ini adalah asli.')
+                    ? (isVoiceScan ? 'Pause the conversation. Do not transfer money or share verification codes.' : isTextScan ? 'Do not transfer money. Contact PDRM at 999.' : imageModelFlagsSynthetic ? 'Treat this image as potentially AI-generated or manipulated.' : 'The overall investigation found risk, but the image model did not independently label it as synthetic.')
+                    : (isVoiceScan ? 'No strong scam signal was found in this voice note.' : isTextScan ? 'This message appears to be safe.' : 'The image model found no strong AI-generation signal.')
                   }
                 </p>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                   {threat
-                    ? (isVoiceScan ? 'Verify the caller through an independently found number before taking any action.' : isTextScan ? 'Do not transfer money. Report to PDRM at 999.' : 'Do not trust this media.')
-                    : (isVoiceScan ? 'Review the cited evidence and remain cautious if the caller adds pressure later.' : isTextScan ? 'This message appears to be safe.' : 'This image is authentic.')
+                    ? (isVoiceScan ? 'Verify the caller through an independently found number before taking any action.' : isTextScan ? 'Do not transfer money. Report to PDRM at 999.' : 'Review the model probability and cited contextual evidence before you rely on this media.')
+                    : (isVoiceScan ? 'Review the cited evidence and remain cautious if the caller adds pressure later.' : isTextScan ? 'This message appears to be safe.' : 'No classifier can prove authenticity; verify the original source when the stakes are high.')
                   }
                 </p>
               </div>

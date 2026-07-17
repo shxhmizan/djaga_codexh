@@ -4,9 +4,16 @@ from __future__ import annotations
 import asyncio
 import io
 import os
+import threading
 from typing import Any
 
 from config import settings
+
+
+_model_lock = threading.Lock()
+_processor: Any | None = None
+_model: Any | None = None
+_loaded_model_id: str | None = None
 
 
 def _is_synthetic(label: str) -> bool:
@@ -26,8 +33,17 @@ def _classify(blob: bytes) -> dict[str, Any]:
     except ImportError as exc:
         raise RuntimeError("Install Pillow, torch, and transformers for image forensics") from exc
     image = Image.open(io.BytesIO(blob)).convert("RGB")
-    processor = AutoImageProcessor.from_pretrained(settings.image_model_id, token=settings.hf_token or None)
-    model = AutoModelForImageClassification.from_pretrained(settings.image_model_id, token=settings.hf_token or None)
+    global _processor, _model, _loaded_model_id
+    # Keep the classifier in memory after the first scan. This avoids a slow
+    # model download/reload per image and makes the live progress stream map
+    # to the actual inference work rather than an artificial delay.
+    with _model_lock:
+        if _model is None or _processor is None or _loaded_model_id != settings.image_model_id:
+            _processor = AutoImageProcessor.from_pretrained(settings.image_model_id, token=settings.hf_token or None)
+            _model = AutoModelForImageClassification.from_pretrained(settings.image_model_id, token=settings.hf_token or None)
+            _model.eval()
+            _loaded_model_id = settings.image_model_id
+        processor, model = _processor, _model
     inputs = processor(images=image, return_tensors="pt")
     with torch.no_grad():
         probabilities = torch.softmax(model(**inputs).logits, dim=-1)[0].tolist()

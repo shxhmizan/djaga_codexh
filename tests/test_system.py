@@ -132,3 +132,26 @@ def test_elevenlabs_knowledge_base_snapshot_is_public_text():
   assert response.status_code == 200
   assert response.headers['content-type'].startswith('text/plain')
   assert 'DJAGA — Malaysian Scam Intelligence Snapshot' in response.text
+
+
+def test_image_verdict_preserves_the_actual_model_posterior():
+ from agents.verdict import VerdictAgent
+ from contracts import AgentResult
+ verdict = VerdictAgent().compose(
+  kind='image',
+  results={
+   'image_forensics': AgentResult(
+    agent='image_forensics', score=.29,
+    payload={
+     'claim':'Classifier returned real: 71%; synthetic-image probability is 29%.',
+     'synthetic_probability':.29,
+     'top_label':'real',
+     'top_label_probability':.71,
+     'model':'test-model',
+    },
+   ),
+  },
+ )
+ image_evidence = verdict.evidence[0]
+ assert image_evidence['details']['top_label'] == 'real'
+ assert image_evidence['details']['synthetic_probability'] == .29
