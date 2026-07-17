@@ -469,6 +469,12 @@ def health():
     return {"ok": True, "agents": {name: settings.agent_mode_for(name) for name in settings.agent_names}, "mode": settings.agent_mode, "langgraph": manager.graph_for("call") is not None}
 
 
+@app.get("/api/healthz")
+def api_health():
+    """Authenticated UI-friendly alias; preserves the public deployment probe."""
+    return health()
+
+
 @app.get("/{path:path}")
 def spa(path: str):
     index = DIST / "index.html"

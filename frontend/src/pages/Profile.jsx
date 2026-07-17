@@ -37,10 +37,15 @@ export default function Profile() {
     fetch('/api/profile/settings', { credentials: 'include' }).then(r => r.ok ? r.json() : null).then(settings => { if (settings) { setAlerts(settings.scam_alerts); setPrivateMode(settings.private_analysis); } });
   }, []);
   const saveSettings = async changes => {
-    const response = await fetch('/api/profile/settings', { method:'PUT', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify(changes) });
-    const settings = await response.json();
-    if (!response.ok) return addToast({ type:'error', message:settings.detail || 'Could not save setting.' });
-    setAlerts(settings.scam_alerts); setPrivateMode(settings.private_analysis);
+    try {
+      const response = await fetch('/api/profile/settings', { method:'PUT', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify(changes) });
+      const settings = await response.json().catch(() => ({}));
+      if (!response.ok) return addToast({ type:'error', message:settings.detail || 'Could not save setting.' });
+      setAlerts(settings.scam_alerts); setPrivateMode(settings.private_analysis);
+      addToast({ type:'success', message:'Setting saved.' });
+    } catch {
+      addToast({ type:'error', message:'Could not reach DJAGA. Your setting was not changed.' });
+    }
   };
   const completedChecks = useMemo(() => checks.filter(check => check.status === 'complete' && check.level && check.risk != null), [checks]);
   const latestCheck = completedChecks[0] || null;
@@ -57,8 +62,13 @@ export default function Profile() {
   }, [latestCheck?.id]);
   const initials = (user?.name || 'DJ').split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase();
   const signOut = async () => {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    setUser(null); navigate('/');
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      if (!response.ok) throw new Error('Sign out failed');
+      setUser(null); navigate('/');
+    } catch {
+      addToast({ type:'error', message:'Could not sign out. Please try again.' });
+    }
   };
 
   return <PageWrapper><div className="py-6 lg:py-8 max-w-3xl mx-auto">

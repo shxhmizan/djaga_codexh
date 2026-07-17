@@ -109,6 +109,14 @@ def test_profile_management_endpoints_persist_changes():
   assert client.post('/api/profile/password',json={'current_password':'longpassword','new_password':'evenlongerpassword'}).status_code == 200
   assert client.delete('/api/profile/history').status_code == 200
 
+
+def test_profile_detection_status_endpoint_is_available_under_api_prefix():
+ with TestClient(app) as client:
+  health = client.get('/api/healthz')
+  assert health.status_code == 200
+  assert health.json()['ok'] is True
+  assert 'agents' in health.json()
+
 def test_elevenlabs_voice_configuration_requires_login_only():
  with TestClient(app) as client:
   assert client.get('/api/elevenlabs/conversation').status_code == 401
