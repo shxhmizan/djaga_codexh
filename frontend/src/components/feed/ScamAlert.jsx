@@ -84,12 +84,13 @@ export default function ScamAlert({ alert }) {
                 <CheckCircle size={10} /> {t('feed.verified')}
               </span>
             )}
+            {alert.aiClassified && <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full" style={{background:'var(--accent-dim)',color:'var(--accent)'}}><CheckCircle size={10} /> AI-classified report</span>}
           </div>
 
           {/* Footer */}
           <div className="flex items-center justify-between text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
             <div className="flex items-center gap-3">
-              <span>{alert.reportCount} {t('feed.reports')}</span>
+              <span>{alert.aiClassified ? 'AI analysis: usable scam indicators found' : `${alert.reportCount} feed record`}</span>
               <span className="flex items-center gap-1">
                 <Calendar size={10} /> {alert.date}
               </span>

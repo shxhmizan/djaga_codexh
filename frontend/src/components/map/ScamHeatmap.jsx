@@ -8,7 +8,7 @@ import StateActivityLog from './StateActivityLog';
 import { useApp } from '../../context/AppContext';
 import useIntelligence from '../../hooks/useIntelligence';
 
-export default function ScamHeatmap({ refreshKey = 0 }) {
+export default function ScamHeatmap({ refreshKey = 0, onViewReport }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
@@ -147,6 +147,7 @@ export default function ScamHeatmap({ refreshKey = 0 }) {
               showMarkers={showMarkers}
               theme={theme}
               userLocation={userLocation}
+              onViewReport={onViewReport}
             />
           </div>
 

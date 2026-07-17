@@ -17,7 +17,7 @@ from assistant.chat import stream_reply
 from auth import change_password, current_user, login, logout, mydigital_login, register
 from config import settings
 from contracts import FeedItem, User, Verdict
-from db import clear_user_history, create_check as db_create_check, get_check, get_feed, get_feed_report, get_intelligence, get_user_settings, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_user_settings, save_verdict, set_language, top_identifier_match, update_user_name, upsert_feed, weekly_intelligence_snapshot
+from db import clear_user_history, create_check as db_create_check, get_check, get_feed, get_feed_report, get_intelligence, get_recent_feed, get_user_settings, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_user_settings, save_verdict, set_language, top_identifier_match, update_user_name, upsert_feed, weekly_intelligence_snapshot
 from jobs.harvester import harvest
 from integrations.openrouter_client import extract_text_from_image
 from intelligence_engine import refresh_modus_operandi
@@ -239,7 +239,8 @@ async def check_stream(session_id: str, djaga_session: str | None = Cookie(None)
 @app.get("/api/feed")
 def api_feed(type: str | None = None, limit: int = 60, djaga_session: str | None = Cookie(None)):
     require_user(djaga_session)
-    return get_feed(type, min(max(limit, 1), 100))
+    records = get_recent_feed(days=7, limit=min(max(limit, 1), 100))
+    return [record for record in records if not type or record["scam_type"].lower() == type.lower()]
 
 
 @app.get("/api/feed/reports/{report_id}")
@@ -307,14 +308,17 @@ def submit_community_report(payload: dict, djaga_session: str | None = Cookie(No
         "ai_summary": analysis["summary"], "confidence": analysis["confidence"], "entities": analysis["entities"],
         "created_at": time.time(),
     })
-    if consent_public:
+    # Vague reports are retained privately for review but are not presented as
+    # public scam intelligence until the analyser identifies a real category.
+    publishable = consent_public and analysis["type"] not in {"other", "unclear", "unsure"} and analysis["confidence"] >= 0.60
+    if publishable:
         lat, lng, region = coordinates_for(location)
         upsert_feed([FeedItem(
             scam_type=analysis["type"], title=analysis["title"], summary=analysis["summary"], region=region,
             lat=lat, lng=lng, source_name="DJAGA community report · AI classified", source_url=f"https://djaga.local/community/{report_id}",
             date=time.strftime("%Y-%m-%d"),
         )])
-    return {"id": report_id, "analysis": analysis, "status": "community_unverified", "published": consent_public}
+    return {"id": report_id, "analysis": analysis, "status": "community_unverified", "published": publishable}
 
 
 def _identifier_result(user: User, value: str, log=None) -> dict:

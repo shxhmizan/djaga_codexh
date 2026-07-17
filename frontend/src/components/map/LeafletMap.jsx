@@ -114,9 +114,9 @@ function buildPopupHTML(point, scamTypes) {
         ${typeData.description || ''}
       </div>
       <div style="padding:8px 16px 14px;display:flex;gap:8px">
-        <a href="/feed?report=${encodeURIComponent(point.reportId || '')}" style="flex:1;text-align:center;padding:6px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid #4FD1A5;background:#4FD1A5;color:#082017;cursor:pointer;text-decoration:none">
+        <button class="djaga-view-report" data-report-id="${String(point.reportId || '')}" style="flex:1;text-align:center;padding:6px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid #4FD1A5;background:#4FD1A5;color:#082017;cursor:pointer;text-decoration:none">
           View full report
-        </a>
+        </button>
         <button onclick="navigator.clipboard.writeText('⚠️ Scam alert in ${point.area}: ${typeData.label}. Stay safe! — DJAGA')" style="padding:6px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid rgba(207,255,234,.32);background:rgba(255,255,255,.10);color:#F4FFF9;cursor:pointer">
           Share
         </button>
@@ -125,7 +125,7 @@ function buildPopupHTML(point, scamTypes) {
   `;
 }
 
-export default function LeafletMap({ points, heatmapData, showHeatmap, showMarkers, theme = 'dark', userLocation, scamTypes: typeRecords = [] }) {
+export default function LeafletMap({ points, heatmapData, showHeatmap, showMarkers, theme = 'dark', userLocation, scamTypes: typeRecords = [], onViewReport }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const heatLayerRef = useRef(null);
@@ -211,6 +211,16 @@ export default function LeafletMap({ points, heatmapData, showHeatmap, showMarke
       marker.bindPopup(popupContent, {
         maxWidth: 280,
         className: 'djaga-popup',
+      });
+      marker.on('popupopen', () => {
+        const button = document.querySelector('.djaga-view-report');
+        if (!button) return;
+        button.onclick = (event) => {
+          event.preventDefault();
+          const reportId = Number(button.dataset.reportId);
+          if (Number.isInteger(reportId) && reportId > 0) onViewReport?.(reportId);
+          map.closePopup();
+        };
       });
 
       setTimeout(() => {

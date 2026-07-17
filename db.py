@@ -170,12 +170,16 @@ def upsert_feed(items: list[FeedItem]) -> int:
     return added
 
 def normalize_feed_source_names() -> None:
-    """Replace a legacy internal source label in records already persisted."""
+    """Replace legacy labels and retire the old unclassified demo alert."""
     with connection() as con:
         con.execute(
             "UPDATE feed_items SET source_name=? WHERE source_name=?",
             ("DJAGA community intelligence", "DJAGA mock intelligence"),
         )
+        # This was a design-time placeholder, not an analysed community report.
+        # Keep legitimate submissions in the audit table; remove only this
+        # exact feed fixture so it cannot reappear in Latest Alerts.
+        con.execute("DELETE FROM feed_items WHERE lower(title)=?", ("unclear report",))
 
 def get_feed(scam_type: str | None=None,limit:int=60) -> list[dict[str,Any]]:
     # Do not surface records whose classification is explicitly unclear in
@@ -184,6 +188,18 @@ def get_feed(scam_type: str | None=None,limit:int=60) -> list[dict[str,Any]]:
     if scam_type: sql+=" AND lower(scam_type)=lower(?)";args=[scam_type]
     sql+=" ORDER BY date DESC, id DESC LIMIT ?";args.append(limit)
     with connection() as con: return [dict(r) for r in con.execute(sql,args).fetchall()]
+
+
+def get_recent_feed(days: int = 7, limit: int = 60) -> list[dict[str, Any]]:
+    cutoff = date.today() - timedelta(days=max(1, days) - 1)
+    records: list[dict[str, Any]] = []
+    for record in get_feed(limit=500):
+        try:
+            if date.fromisoformat(str(record.get("date", ""))[:10]) >= cutoff:
+                records.append(record)
+        except ValueError:
+            continue
+    return records[:limit]
 
 
 def get_feed_report(report_id: int) -> dict[str, Any] | None:

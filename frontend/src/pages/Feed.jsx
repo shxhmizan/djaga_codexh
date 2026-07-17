@@ -41,7 +41,7 @@ export default function Feed() {
         id: `${item.region}-${index}`, title: item.title, description: item.summary,
         area: item.region, source: item.source_name, type: item.scam_type.toLowerCase().replaceAll(' ', '_'),
         severity: item.scam_type.toLowerCase().includes('cloned') ? 'critical' : 'high',
-        reportCount: item.scam_type.toLowerCase().includes('cloned') ? 12 : 7,
+        reportCount: 1, aiClassified: item.source_name.toLowerCase().includes('ai classified'),
         verified: false, date: item.date,
       })))).catch(() => setLiveAlerts([]));
   }, []);
@@ -72,7 +72,7 @@ export default function Feed() {
       if (!response.ok) throw new Error(result.detail || 'Unable to submit this report.');
       loadFeed(); setFeedRefreshKey(key => key + 1); setAnalysis(result.analysis); setShowReportModal(false); setShowAnalysisModal(true);
       setReportDescription(''); setReportPhone(''); setReportLocation(''); setOccurredWhen('today'); setConsentPublic(false); setReportType('unsure');
-      addToast({ type: 'success', title: 'Report saved', message: result.published ? 'Added to the community intelligence feed as unverified.' : 'Saved privately to your account.' });
+      addToast({ type: 'success', title: 'Report saved', message: result.published ? 'AI classification met the threshold and was added to current community intelligence.' : 'DJAGA saved this report privately because it could not identify a reliable public scam category.' });
     } catch (error) { setReportError(error.message); } finally { setSubmitting(false); }
   };
 
@@ -100,7 +100,7 @@ export default function Feed() {
               <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Explore locations, signals, and emerging scam patterns alongside the live feed.</p>
             </div>
           </div>
-          <ScamHeatmap refreshKey={feedRefreshKey} />
+          <ScamHeatmap refreshKey={feedRefreshKey} onViewReport={(reportId) => setSearchParams({ report: String(reportId) })} />
         </section>
 
         {/* Feed */}
