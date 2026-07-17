@@ -89,8 +89,17 @@ class PipelineManager:
             s.complete=True
 
     async def _finish_verdict(self, s: Session) -> None:
-        verdict=self.fuse(s)
-        s.results['verdict']=AgentResult(agent='verdict',score=verdict.risk,payload=verdict.model_dump())
+        await self.emit(s, "trace", "verdict", "started", "Verdict is weighting the available investigation evidence.")
+        try:
+            verdict_result = await get_agent("verdict").run(kind=s.kind, results=s.results, text=s.text)
+            verdict = Verdict(**verdict_result.payload["verdict"])
+        except Exception as exc:
+            # Verdict is deterministic and should not fail, but retain a safe
+            # session outcome if its implementation ever becomes unavailable.
+            await self.emit(s, "trace", "verdict", "error", "Verdict fusion encountered an error; DJAGA returned a cautious fallback.")
+            verdict = self.fuse(s)
+            verdict_result = AgentResult(agent="verdict", score=verdict.risk, payload={"verdict": verdict.model_dump(), "error": str(exc)}, unavailable=True)
+        s.results['verdict']=verdict_result
         await self.emit(s,"trace","verdict","done",self._verdict_message(verdict),verdict.risk,{"verdict":verdict.model_dump()})
         await self.emit(s,"risk","verdict","done",verdict.level.title(),verdict.risk,{"verdict":verdict.model_dump()})
         if s.user_id != "demo":save_verdict(s.id,verdict)
@@ -146,16 +155,7 @@ class PipelineManager:
         self.graphs[kind] = compiled
         return compiled
     def fuse(self,s:Session)->Verdict:
-        weights=settings.audio_weights if s.kind in {"call","voice"} else settings.text_weights if s.kind=="message" else settings.image_weights
-        available={n:r for n,r in s.results.items() if n in weights and r.score is not None and not r.unavailable}
-        total=sum(weights[n] for n in available) or 1
-        risk=sum((weights[n]/total)*float(r.score) for n,r in available.items())
-        level="danger" if risk>=settings.danger_threshold else "caution" if risk>=settings.caution_threshold else "safe"
-        evidence=[]
-        for n,r in available.items():evidence.append({"agent":n,"claim":r.payload.get("claim",f"{n} signal"),"weight_contribution":round(weights[n]/total*float(r.score),3),"score":r.score,"mock":r.payload.get("mock",False)})
-        transcript=s.results.get("transcribe",AgentResult(agent="x")).payload.get("transcript",s.text)
-        flagged=["do not tell anyone","Transfer RM3,000 now","frozen account"] if risk>=.65 else []
-        return Verdict(risk=round(risk,3),level=level,kind=s.kind,evidence=evidence,excerpt=transcript,flagged_phrases=flagged)
+        return get_agent("verdict").compose(kind=s.kind, results=s.results, text=s.text)
     def _verdict_message(self,v:Verdict)->str:
         return "This may be a scam. Do not transfer money or share codes." if v.level=="danger" else "Evidence is mixed. Pause and verify independently." if v.level=="caution" else "No strong scam signal was found in this check."
 
