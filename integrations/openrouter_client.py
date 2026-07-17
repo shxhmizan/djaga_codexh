@@ -204,6 +204,8 @@ def _audio_format(content_type: str) -> str:
         "audio/wav": "wav",
         "audio/x-wav": "wav",
         "audio/ogg": "ogg",
+        "audio/webm": "webm",
+        "video/webm": "webm",
         "audio/flac": "flac",
         "audio/aac": "aac",
     }.get(content_type.lower(), "m4a")

@@ -170,10 +170,30 @@ async def analyze_check(
         if not file or file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
             raise HTTPException(415, "Image checks require a JPEG, PNG, or WebP upload")
     if kind == "voice":
-        if not file or file.content_type not in {"audio/mp4", "audio/x-m4a", "audio/mpeg", "audio/wav", "audio/x-wav", "audio/webm", "audio/ogg"}:
+        voice_content_type = _normalise_voice_content_type(file) if file else None
+        if not voice_content_type:
             raise HTTPException(415, "Voice checks require an M4A, MP3, WAV, WebM, or OGG upload")
-    await manager.analyze(session_id, user.id, text=text, blob=data, content_type=file.content_type if file else None)
+    await manager.analyze(session_id, user.id, text=text, blob=data, content_type=voice_content_type if kind == "voice" else file.content_type if file else None)
     return {"ok": True, "session_id": session_id}
+
+
+def _normalise_voice_content_type(file: UploadFile) -> str | None:
+    """Accept browser MediaRecorder containers even when they use video/webm.
+
+    Chrome commonly labels an audio-only WebM recording ``video/webm`` and
+    some browsers add a ``; codecs=...`` suffix. The filename is used only to
+    normalise a generic MIME type, never as a substitute for upload limits.
+    """
+    content_type = (file.content_type or "").lower().split(";", 1)[0].strip()
+    allowed = {
+        "audio/mp4", "audio/x-m4a", "audio/m4a", "audio/mpeg", "audio/mp3",
+        "audio/wav", "audio/x-wav", "audio/webm", "video/webm", "audio/ogg", "audio/aac",
+    }
+    if content_type in allowed:
+        return "audio/webm" if content_type == "video/webm" else content_type
+    suffix = (file.filename or "").lower().rsplit(".", 1)[-1]
+    inferred = {"m4a": "audio/x-m4a", "mp3": "audio/mpeg", "wav": "audio/wav", "webm": "audio/webm", "ogg": "audio/ogg", "aac": "audio/aac"}.get(suffix)
+    return inferred if content_type in {"", "application/octet-stream"} else None
 
 
 async def _extract_message_upload(data: bytes, file: UploadFile) -> str:

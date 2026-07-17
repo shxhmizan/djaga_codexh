@@ -62,6 +62,10 @@ def test_image_and_voice_upload_paths_emit_real_pipeline_events():
    assert verdict['kind']==kind and verdict['evidence']
    stream=client.get(f'/api/checks/{sid}/stream')
    assert 'event: trace' in stream.text and 'event: risk' in stream.text
+  # Chrome may mark an audio-only MediaRecorder file as video/webm.
+  sid = client.post('/api/checks', json={'kind':'voice'}).json()['session_id']
+  webm = {'file': ('voice-note.webm', b'webm-audio-bytes', 'video/webm')}
+  assert client.post(f'/api/checks/{sid}/analyze', files=webm).status_code == 200
 
 def test_scam_check_upload_and_top_identifier_use_message_pipeline():
  with TestClient(app) as client:
