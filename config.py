@@ -60,6 +60,12 @@ class Settings:
         implementation; a configured service that fails is surfaced as an
         unavailable signal by the pipeline.
         """
+        # Intake and Verdict are deterministic local pipeline components. They
+        # do not contact an external service or fabricate evidence, so they
+        # remain real even while provider-backed agents use mock development
+        # mode. This also avoids requiring deployment-only environment flags.
+        if agent in {"intake", "verdict"}:
+            return "real"
         # BEHAVIORAL_MODE already means classifier strategy (fewshot vs
         # Databricks), so its agent override uses the unambiguous suffix below.
         explicit = os.getenv(f"{agent.upper()}_AGENT_MODE")
