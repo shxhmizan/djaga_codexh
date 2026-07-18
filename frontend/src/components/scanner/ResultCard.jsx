@@ -48,6 +48,7 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
   const voiceAnalysis = result.voiceAnalysis;
   const syntheticProbability = imageAnalysis?.syntheticProbability;
   const imageModelFlagsSynthetic = typeof syntheticProbability === 'number' && syntheticProbability >= 0.5;
+  const syntheticPercent = typeof syntheticProbability === 'number' ? Math.round(syntheticProbability * 100) : null;
   const statusLabel = isImageScan
     ? (imageModelFlagsSynthetic ? 'LIKELY SYNTHETIC IMAGE' : 'IMAGE MODEL: NO STRONG SYNTHETIC SIGNAL')
     : isVoiceScan
@@ -115,12 +116,19 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
           {showGauge && (
             <div className="flex justify-center mb-6">
               <ConfidenceGauge
-                value={result.confidence}
+                value={isImageScan && syntheticPercent !== null ? syntheticPercent : result.confidence}
                 color={color}
                 size={140}
-                label={isImageScan ? 'Overall investigation risk' : ''}
+                label={isImageScan ? 'Synthetic-image probability' : ''}
               />
             </div>
+          )}
+
+          {isImageScan && syntheticPercent !== null && (
+            <p className="-mt-3 mb-6 text-center text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Overall scam-context risk: <strong style={{ color: 'var(--text-primary)' }}>{result.confidence}%</strong>
+              {' '}— calculated separately from the image signal and any available intelligence evidence.
+            </p>
           )}
 
           {isVoiceScan && (voiceAnalysis?.summary || voiceAnalysis?.transcript) && (
@@ -202,13 +210,17 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
               <AlertTriangle size={16} style={{ color, flexShrink: 0, marginTop: 2 }} />
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {threat
-                    ? (isVoiceScan ? 'Pause the conversation. Do not transfer money or share verification codes.' : isTextScan ? 'Do not transfer money. Contact PDRM at 999.' : imageModelFlagsSynthetic ? 'Treat this image as potentially AI-generated or manipulated.' : 'The overall investigation found risk, but the image model did not independently label it as synthetic.')
+                  {imageModelFlagsSynthetic
+                    ? `The image agent found a ${syntheticPercent}% synthetic-image probability. Treat this image as potentially AI-generated or manipulated.`
+                    : threat
+                    ? (isVoiceScan ? 'Pause the conversation. Do not transfer money or share verification codes.' : isTextScan ? 'Do not transfer money. Contact PDRM at 999.' : 'The overall investigation found risk, but the image agent did not independently label it as synthetic.')
                     : caution && isVoiceScan ? 'This voice note has mixed scam signals. Treat it cautiously and verify the caller.' : (isVoiceScan ? 'No strong scam signal was found in this voice note.' : isTextScan ? 'This message appears to be safe.' : 'The image model found no strong AI-generation signal.')
                   }
                 </p>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                  {threat
+                  {imageModelFlagsSynthetic
+                    ? 'This is an authenticity signal, not proof of fraud. Verify the original source before relying on the image.'
+                    : threat
                     ? (isVoiceScan ? 'Verify the caller through an independently found number before taking any action.' : isTextScan ? 'Do not transfer money. Report to PDRM at 999.' : 'Review the model probability and cited contextual evidence before you rely on this media.')
                     : caution && isVoiceScan ? 'Do not transfer money or share verification codes until you verify the caller through an independently found number.' : (isVoiceScan ? 'Review the cited evidence and remain cautious if the caller adds pressure later.' : isTextScan ? 'This message appears to be safe.' : 'No classifier can prove authenticity; verify the original source when the stakes are high.')
                   }

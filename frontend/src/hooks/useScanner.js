@@ -71,14 +71,14 @@ export function useScanner() {
         );
         setResult({
           id: session_id, type, timestamp: new Date().toISOString(), live: true,
-          // An overall risk verdict is not automatically an image-model claim.
-          // Only label an image "fake" when the authenticity model itself
-          // assigned at least 50% synthetic probability.
+          // The image agent's authenticity signal and overall scam-context
+          // risk are separate measurements. A likely-synthetic image must be
+          // displayed as caution even when the wider OSINT verdict is lower.
           verdict: type === 'voice'
             ? (verdict.level === 'danger' ? 'scam' : verdict.level === 'caution' ? 'caution' : 'safe')
-            : verdict.level === 'danger'
-              ? (type === 'image' && syntheticProbability >= 0.5 ? 'fake' : 'scam')
-              : 'safe',
+            : type === 'image' && syntheticProbability >= 0.5
+              ? 'caution'
+              : verdict.level === 'danger' ? 'scam' : 'safe',
           confidence: Math.round(verdict.risk * 100), highlights: verdict.evidence.map(item => item.claim),
           duration: Math.round((Date.now() - requestAt) / 1000), filename: options.fileName, text: options.text,
           evidence: verdict.evidence,
