@@ -74,9 +74,11 @@ export function useScanner() {
           // An overall risk verdict is not automatically an image-model claim.
           // Only label an image "fake" when the authenticity model itself
           // assigned at least 50% synthetic probability.
-          verdict: verdict.level === 'danger'
-            ? (type === 'image' && syntheticProbability >= 0.5 ? 'fake' : type === 'voice' ? 'fake' : 'scam')
-            : 'safe',
+          verdict: type === 'voice'
+            ? (verdict.level === 'danger' ? 'scam' : verdict.level === 'caution' ? 'caution' : 'safe')
+            : verdict.level === 'danger'
+              ? (type === 'image' && syntheticProbability >= 0.5 ? 'fake' : 'scam')
+              : 'safe',
           confidence: Math.round(verdict.risk * 100), highlights: verdict.evidence.map(item => item.claim),
           duration: Math.round((Date.now() - requestAt) / 1000), filename: options.fileName, text: options.text,
           evidence: verdict.evidence,

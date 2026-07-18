@@ -100,7 +100,7 @@ export default function VoiceScan() {
 
   useEffect(() => {
     if (result && !isScanning) {
-      const threat = result.verdict === 'fake';
+      const threat = result.riskLevel === 'danger';
       if (threat) {
         haptics.threat();
         sound.resultThreat();

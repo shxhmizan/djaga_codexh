@@ -47,6 +47,9 @@ class Settings:
     hf_token: str = os.getenv("HF_TOKEN", "")
     danger_threshold: float = float(os.getenv("DANGER_THRESHOLD", "0.65"))
     caution_threshold: float = float(os.getenv("CAUTION_THRESHOLD", "0.35"))
+    # A voice scan at 50% or above is never reassuring enough to present as
+    # safe, even if a deployment raises the general caution threshold.
+    voice_caution_floor: float = float(os.getenv("VOICE_CAUTION_FLOOR", "0.50"))
     mock_delay_scale: float = float(os.getenv("MOCK_DELAY_SCALE", "1"))
     agent_names: tuple[str, ...] = ("intake", "forensics", "image_forensics", "transcribe", "behavioral", "registry", "osint", "verdict")
     audio_weights: dict = None  # type: ignore[assignment]

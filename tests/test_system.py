@@ -192,3 +192,20 @@ def test_openrouter_voice_result_is_schema_checked():
  assert result['acoustic_score'] == .41
  assert result['transcript'].startswith('Please transfer')
  assert result['voice_summary'].startswith('The caller asks')
+
+
+def test_voice_risk_at_fifty_percent_is_not_safe(monkeypatch):
+ from dataclasses import replace
+ import agents.verdict as verdict_module
+ from agents.verdict import VerdictAgent
+ from config import settings
+ from contracts import AgentResult
+ # This confirms the voice-specific floor still protects users even if a
+ # deployment has a more permissive general caution threshold.
+ monkeypatch.setattr(verdict_module, 'settings', replace(settings, caution_threshold=.75))
+ verdict = VerdictAgent().compose(
+  kind='voice',
+  results={'forensics': AgentResult(agent='forensics', score=.5, payload={'claim': 'Mixed voice signal.'})},
+ )
+ assert verdict.risk == .5
+ assert verdict.level == 'caution'

@@ -48,6 +48,7 @@ export function getVerdictLabel(verdict) {
     real: 'AUTHENTIC',
     fake: 'DEEPFAKE DETECTED',
     safe: 'SAFE',
+    caution: 'CAUTION',
     scam: 'SCAM DETECTED',
   };
   return labels[verdict] || verdict.toUpperCase();
@@ -58,6 +59,7 @@ export function getVerdictEmoji(verdict) {
     real: '✅',
     fake: '🚨',
     safe: '✅',
+    caution: '⚠️',
     scam: '🚨',
   };
   return emojis[verdict] || '⚠️';

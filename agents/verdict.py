@@ -21,6 +21,10 @@ class VerdictAgent:
         total_weight = sum(weights[name] for name in available) or 1.0
         risk = sum((weights[name] / total_weight) * float(result.score) for name, result in available.items())
         level = "danger" if risk >= settings.danger_threshold else "caution" if risk >= settings.caution_threshold else "safe"
+        # Voice evidence can be incomplete—especially short or noisy clips—so
+        # a 50%+ fused voice risk must remain caution, never a green result.
+        if kind in {"call", "voice"} and risk >= settings.voice_caution_floor and level == "safe":
+            level = "caution"
         evidence = []
         for name, result in available.items():
             item = {

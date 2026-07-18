@@ -15,13 +15,16 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
   const [flashColor, setFlashColor] = useState(null);
 
   const threat = isThreat(result.verdict);
-  const color = threat ? 'var(--threat)' : 'var(--safe)';
-  const verdictText = result.verdict === 'fake' ? 'FAKE' : result.verdict === 'scam' ? 'SCAM' : result.verdict === 'real' ? 'REAL' : 'SAFE';
+  const caution = result.verdict === 'caution';
+  const color = threat ? 'var(--threat)' : caution ? 'var(--warning)' : 'var(--safe)';
+  const toneDim = threat ? 'var(--threat-dim)' : caution ? 'var(--warning-dim)' : 'var(--safe-dim)';
+  const toneBorder = threat ? 'var(--threat-border)' : caution ? 'rgba(255,208,106,0.42)' : 'var(--safe-border)';
+  const verdictText = result.verdict === 'fake' ? 'FAKE' : result.verdict === 'scam' ? 'SCAM' : result.verdict === 'caution' ? 'CAUTION' : result.verdict === 'real' ? 'REAL' : 'SAFE';
 
   // Timed reveal sequence
   useEffect(() => {
     // Flash
-    setFlashColor(threat ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)');
+    setFlashColor(threat ? 'rgba(239,68,68,0.3)' : caution ? 'rgba(255,208,106,0.24)' : 'rgba(34,197,94,0.3)');
     const t1 = setTimeout(() => setFlashColor(null), 200);
     // Card
     const t2 = setTimeout(() => setShowCard(true), 200);
@@ -35,7 +38,7 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
     return () => {
       [t1, t2, t3, t4, t5].forEach(clearTimeout);
     };
-  }, [result, threat]);
+  }, [result, threat, caution]);
 
   const highlights = result.highlights || result.matchedKeywords || [];
   const isTextScan = result.type === 'text';
@@ -48,7 +51,7 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
   const statusLabel = isImageScan
     ? (imageModelFlagsSynthetic ? 'LIKELY SYNTHETIC IMAGE' : 'IMAGE MODEL: NO STRONG SYNTHETIC SIGNAL')
     : isVoiceScan
-    ? (threat ? 'POTENTIAL VOICE SCAM' : 'NO STRONG VOICE SCAM SIGNAL')
+    ? (threat ? 'POTENTIAL VOICE SCAM' : caution ? 'VOICE SIGNALS NEED VERIFICATION' : 'NO STRONG VOICE SCAM SIGNAL')
     : threat ? 'DEEPFAKE DETECTED' : isTextScan ? (result.verdict === 'scam' ? 'SCAM DETECTED' : 'MESSAGE SAFE') : 'AUTHENTIC IMAGE';
   const imageHeadline = imageModelFlagsSynthetic ? 'SYNTHETIC RISK' : 'NO STRONG AI SIGNAL';
 
@@ -66,7 +69,7 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
       )}
 
       {/* Particle burst */}
-      <ParticleBurst type={threat ? 'threat' : 'safe'} trigger={showParticles} />
+      <ParticleBurst type={threat || caution ? 'threat' : 'safe'} trigger={showParticles} />
 
       {/* Result card */}
       <div
@@ -75,17 +78,17 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
           opacity: showCard ? 1 : 0,
           transform: showCard ? 'scale(1)' : 'scale(0.95)',
           transition: 'all 0.4s cubic-bezier(0.34,1.56,0.64,1)',
-          border: `1px solid ${threat ? 'var(--threat-border)' : 'var(--safe-border)'}`,
-          background: threat ? 'var(--threat-dim)' : 'var(--safe-dim)',
-          boxShadow: `0 0 60px ${threat ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)'}`,
+          border: `1px solid ${toneBorder}`,
+          background: toneDim,
+          boxShadow: `0 0 60px ${threat ? 'rgba(239,68,68,0.1)' : caution ? 'rgba(255,208,106,0.12)' : 'rgba(34,197,94,0.1)'}`,
         }}
       >
         {/* Top badge bar */}
         <div
           className="px-5 py-3 flex items-center justify-center gap-2 text-sm font-semibold"
           style={{
-            background: threat ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)',
-            color: threat ? '#FCA5A5' : '#86EFAC',
+            background: threat ? 'rgba(239,68,68,0.15)' : caution ? 'rgba(255,208,106,0.14)' : 'rgba(34,197,94,0.15)',
+            color: threat ? '#FCA5A5' : caution ? '#FFE1A0' : '#86EFAC',
             fontFamily: 'var(--font-display)',
             borderRadius: '16px 16px 0 0',
           }}
@@ -100,11 +103,11 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
               className="text-5xl font-extrabold mb-1"
               style={{
                 fontFamily: 'var(--font-display)',
-                color: threat ? '#EF4444' : '#22C55E',
+                color: threat ? '#EF4444' : caution ? 'var(--warning)' : '#22C55E',
                 letterSpacing: '-1px',
               }}
             >
-              {isImageScan ? imageHeadline : isVoiceScan ? (threat ? 'SCAM RISK' : 'SAFE') : verdictText}
+              {isImageScan ? imageHeadline : isVoiceScan ? (threat ? 'SCAM RISK' : caution ? 'CAUTION' : 'SAFE') : verdictText}
             </h2>
           </div>
 
@@ -178,7 +181,7 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
                   >
                     <span
                       className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
-                      style={{ background: threat ? 'var(--threat)' : 'var(--safe)' }}
+                      style={{ background: color }}
                     />
                     {h}
                   </div>
@@ -191,23 +194,23 @@ export default function ResultCard({ result, onReset, showTrace = true }) {
           <div
             className="rounded-xl p-4 mb-5"
             style={{
-              background: threat ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
-              borderLeft: `3px solid ${threat ? 'var(--threat)' : 'var(--safe)'}`,
+              background: threat ? 'rgba(239,68,68,0.08)' : caution ? 'var(--warning-dim)' : 'rgba(34,197,94,0.08)',
+              borderLeft: `3px solid ${color}`,
             }}
           >
             <div className="flex items-start gap-2">
-              <AlertTriangle size={16} style={{ color: threat ? 'var(--warning)' : 'var(--safe)', flexShrink: 0, marginTop: 2 }} />
+              <AlertTriangle size={16} style={{ color, flexShrink: 0, marginTop: 2 }} />
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                   {threat
                     ? (isVoiceScan ? 'Pause the conversation. Do not transfer money or share verification codes.' : isTextScan ? 'Do not transfer money. Contact PDRM at 999.' : imageModelFlagsSynthetic ? 'Treat this image as potentially AI-generated or manipulated.' : 'The overall investigation found risk, but the image model did not independently label it as synthetic.')
-                    : (isVoiceScan ? 'No strong scam signal was found in this voice note.' : isTextScan ? 'This message appears to be safe.' : 'The image model found no strong AI-generation signal.')
+                    : caution && isVoiceScan ? 'This voice note has mixed scam signals. Treat it cautiously and verify the caller.' : (isVoiceScan ? 'No strong scam signal was found in this voice note.' : isTextScan ? 'This message appears to be safe.' : 'The image model found no strong AI-generation signal.')
                   }
                 </p>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                   {threat
                     ? (isVoiceScan ? 'Verify the caller through an independently found number before taking any action.' : isTextScan ? 'Do not transfer money. Report to PDRM at 999.' : 'Review the model probability and cited contextual evidence before you rely on this media.')
-                    : (isVoiceScan ? 'Review the cited evidence and remain cautious if the caller adds pressure later.' : isTextScan ? 'This message appears to be safe.' : 'No classifier can prove authenticity; verify the original source when the stakes are high.')
+                    : caution && isVoiceScan ? 'Do not transfer money or share verification codes until you verify the caller through an independently found number.' : (isVoiceScan ? 'Review the cited evidence and remain cautious if the caller adds pressure later.' : isTextScan ? 'This message appears to be safe.' : 'No classifier can prove authenticity; verify the original source when the stakes are high.')
                   }
                 </p>
               </div>
