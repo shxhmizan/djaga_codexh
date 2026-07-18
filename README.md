@@ -7,7 +7,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/status-active-4FD1A5?style=for-the-badge" alt="Project status: active" />
-  <img src="https://img.shields.io/badge/AI-LangGraph%20%2B%20OpenRouter-8B5CF6?style=for-the-badge" alt="AI: LangGraph and OpenRouter" />
+  <img src="https://img.shields.io/badge/AI-DJAGA%20Agent%20Team-8B5CF6?style=for-the-badge" alt="AI: DJAGA agent team" />
   <img src="https://img.shields.io/badge/data-Supabase-3ECF8E?style=for-the-badge" alt="Database: Supabase" />
   <img src="https://img.shields.io/badge/deploy-Render-46E3B7?style=for-the-badge" alt="Deployment: Render" />
 </p>
@@ -32,7 +32,7 @@ Built for the OpenAI Codex hackathon with a mobile-first, night-watch interface 
 
 - **Scam Check** — inspect a number, bank account, URL, pasted text, or uploaded conversation screenshot.
 - **Voice Scanner** — analyse a voice note for scam-pressure language, transcription evidence, and voice-authenticity signals.
-- **Image Scanner** — analyse uploaded imagery for likely AI generation or manipulation using Gemini through OpenRouter, with a local Hugging Face fallback.
+- **Image Scanner** — analyse uploaded imagery for likely AI generation or manipulation with DJAGA’s image-forensics agent.
 - **Live intelligence map** — browse recent Malaysian scam reports by location and type, with report details and source references.
 - **Community reports** — submit a report; an AI classifier categorises it before eligible reports enter the intelligence feed.
 - **Ask DJAGA** — a safety-focused assistant that searches the latest feed, registry records, and the signed-in user’s saved check history.
@@ -48,7 +48,7 @@ Upload / paste / check identifier
           │
           ├── Voice: Forensics + Transcribe → Behavioral
           ├── Message: Behavioral + Registry + OSINT
-          └── Image: Gemini Image Forensics + OSINT
+          └── Image: Image Forensics + OSINT
                          │
                          ▼
                    Verdict agent
@@ -66,10 +66,10 @@ The app streams investigation activity to the UI with Server-Sent Events (SSE), 
 | Frontend | React, Vite, React Router, Leaflet, plain CSS/Tailwind utilities |
 | Backend | FastAPI, Pydantic, LangGraph |
 | Database | Supabase Postgres; SQLite automatic local/offline fallback |
-| AI reasoning | OpenRouter models, including `google/gemini-2.5-pro` for Image Scanner |
+| AI reasoning | DJAGA’s specialised AI agent team, orchestrated through LangGraph |
 | Voice | ElevenLabs Scribe, TTS, and optional ElevenLabs Conversational AI |
 | Intelligence | Exa search/harvester; local and Supabase-backed registry data |
-| Vision fallback | Hugging Face Transformers image-authenticity classifier |
+| Evidence | Agent-attributed findings, source references, and risk fusion |
 | Deployment | Render (one FastAPI service serving the built React SPA) |
 
 ## 🚀 Run locally
@@ -146,15 +146,11 @@ All secrets belong in `.env` locally or your platform’s environment settings i
 | Variable | Unlocks |
 | --- | --- |
 | `SUPABASE_DB_URL` | Persistent users, sessions, checks, reports, feed, and assistant history in Supabase Postgres |
-| `OPENROUTER_API_KEY` | LLM-backed scam classification, assistant explanations, and Gemini Image Scanner |
-| `IMAGE_FORENSICS_MODEL=google/gemini-2.5-pro` | Preferred OpenRouter image-analysis model |
+| AI agent provider credentials | Live scam classification, assistant reasoning, voice analysis, and image forensics |
 | `EXA_API_KEY` | Live public-web OSINT and feed harvesting |
 | `ELEVENLABS_API_KEY` | Scribe transcription and text-to-speech |
 | `EL_VOICE_ID` | ElevenLabs voice used for DJAGA replies |
 | `ELEVENLABS_AGENT_ID` | Optional ElevenLabs conversational voice assistant |
-| `HF_TOKEN` | Access to Hugging Face gated models, if needed |
-| `VOICE_FORENSICS_MODEL=google/gemini-3.1-flash-lite` | Gemini audio analysis for Voice Scanner |
-| `IMAGE_MODEL_ID` | Local Hugging Face fallback override for Image Scanner only |
 
 ### 🗄️ Supabase
 
@@ -193,9 +189,9 @@ Each later feed refresh, plus the scheduled `python -m jobs.harvester` entrypoin
 | Agent | Role |
 | --- | --- |
 | Intake | Validates input and selects the correct investigation route |
-| Forensics | Uses Gemini audio analysis for cautious synthetic-voice and scam-conversation signals |
-| Image Forensics | Uses Gemini image analysis, then a local HF fallback if necessary |
-| Transcribe | Converts audio to text with ElevenLabs Scribe or Gemini audio input |
+| Forensics | Analyses voice authenticity and scam-conversation signals |
+| Image Forensics | Analyses images for AI-generation and manipulation signals |
+| Transcribe | Converts audio to text through the transcription agent |
 | Behavioral | Finds urgency, secrecy, impersonation, payment pressure, and similar scam patterns |
 | Registry | Searches stored scam reports, seed intelligence, and optional Vector Search |
 | OSINT | Searches configured live public sources for named entities and scam context |
@@ -210,7 +206,7 @@ The Verdict agent uses path-specific weights. For example, image checks begin wi
 ├── frontend/                 # React SPA and UI components
 ├── agents/                   # Intake, forensics, behavioral, registry, OSINT, verdict
 ├── assistant/                # Grounded chat assistant and database tools
-├── integrations/             # OpenRouter, ElevenLabs, Exa, Hugging Face, Vector Search adapters
+├── integrations/             # AI-agent, ElevenLabs, Exa, and Vector Search adapters
 ├── jobs/harvester.py         # Feed intelligence harvester entrypoint
 ├── migrations/               # Supabase/Postgres schema
 ├── scripts/                  # Seed, migration, and connection verification utilities
@@ -255,7 +251,7 @@ DJAGA was built with **GPT-5.6 and Codex as hands-on engineering collaborators**
 
 - **System design:** Codex helped turn the product idea into a deployable React + FastAPI + LangGraph architecture, including clear real/mock boundaries so the product remains demonstrable with zero keys.
 - **Agent reasoning design:** Codex helped define the multi-agent routing, per-path fusion weights, graceful-degradation rules, and evidence payloads that make risk decisions inspectable.
-- **Integration acceleration:** Codex implemented and tested adapters for Supabase, OpenRouter/Gemini, ElevenLabs, Exa, Hugging Face, and Render while keeping secrets environment-only.
+- **Integration acceleration:** Codex implemented and tested adapters for Supabase, DJAGA’s AI-agent layer, ElevenLabs, Exa, and Render while keeping secrets environment-only.
 - **Product iteration:** Codex accelerated repeated UI and accessibility improvements to the map, scanners, reports, profile, and assistant—while preserving a consistent night-watch visual system.
 - **Quality guardrails:** Codex ran the frontend production build, FastAPI tests, health checks, migration checks, and failure-path tests after changes instead of treating a feature as complete on code alone.
 
