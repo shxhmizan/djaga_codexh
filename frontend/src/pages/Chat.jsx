@@ -211,7 +211,7 @@ export default function Chat() {
             <div className="agent-copy">
               <span>{statusCopy}</span>
               <h1>DJAGA Assistant</h1>
-              <p>Speak when you need a faster answer. Type when you need detail, links, or a record you can read back.</p>
+              <p>Speak for quick public intelligence. Type for a database-grounded answer using DJAGA’s current feed and your saved checks.</p>
             </div>
           </div>
 

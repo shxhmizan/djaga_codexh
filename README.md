@@ -171,7 +171,7 @@ SUPABASE_DB_URL='your-connection-string' python3 scripts/migrate_sqlite_to_supab
 python3 scripts/test_supabase_connection.py
 ```
 
-### 🎙️ ElevenLabs knowledge-base option (no webhook)
+### 🎙️ ElevenLabs knowledge-base sync (no webhook)
 
 For a voice agent grounded in DJAGA’s current public intelligence without custom tools, add this URL as an ElevenLabs Knowledge Base document:
 
@@ -179,7 +179,14 @@ For a voice agent grounded in DJAGA’s current public intelligence without cust
 https://<your-render-service>.onrender.com/api/elevenlabs/knowledge-base.txt
 ```
 
-It generates a readable, public, seven-day feed snapshot from the app database. Refresh the document after new reports arrive, or enable URL auto-sync where your ElevenLabs plan supports it. This approach is intentionally feed-only: it never exposes private user scans or account data.
+It generates a readable, public, seven-day feed snapshot from the app database. DJAGA can now create and update an ElevenLabs **text** knowledge-base document directly, so it is not limited by URL refresh intervals.
+
+1. Set `ELEVENLABS_API_KEY` on Render.
+2. Deploy this commit.
+3. Sign in to DJAGA, then call `POST /api/elevenlabs/knowledge-base/sync` once (or refresh the feed in the app). DJAGA creates the document and stores its ID in Supabase.
+4. In ElevenLabs, attach the resulting document to the configured DJAGA agent once. You can see the ID at `GET /api/elevenlabs/knowledge-base/status` while signed in.
+
+Each later feed refresh, plus the scheduled `python -m jobs.harvester` entrypoint, updates that same document. The snapshot is intentionally feed-only: it never exposes private user scans, account data, or chat history. DJAGA's typed assistant remains the live database-grounded path for a user's own saved checks.
 
 ## 🤖 Agent pipeline
 

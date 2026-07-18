@@ -36,4 +36,30 @@ def harvest(seed_only:bool=False)->dict:
  items=SEED if seed_only else asyncio.run(live_items())
  if not items:items=SEED
  return {'ok':True,'added':upsert_feed(items),'items_checked':len(items),'mode':'live' if items is not SEED else 'mock'}
-if __name__=='__main__':print(harvest())
+
+
+async def run_scheduled_harvest() -> dict:
+ """Scheduled entrypoint: harvest the feed then refresh the ElevenLabs KB.
+
+ It is safe with no provider key: the sync reports a skipped state while the
+ harvester still updates the app's own database.
+ """
+ result = await asyncio.to_thread(harvest)
+ from assistant.tools import knowledge_base_snapshot
+ from config import settings
+ from db import get_intelligence_record, set_intelligence_record
+ from integrations.elevenlabs_client import sync_knowledge_base_document
+ stored = get_intelligence_record('integration_state', 'elevenlabs_knowledge_base') or {}
+ sync = await sync_knowledge_base_document(
+  knowledge_base_snapshot(), settings.elevenlabs_kb_document_id or str(stored.get('document_id', '')),
+ )
+ if sync.get('ok') and sync.get('document_id') and not settings.elevenlabs_kb_document_id:
+  set_intelligence_record('integration_state', 'elevenlabs_knowledge_base', {'document_id': sync['document_id']})
+ result['elevenlabs_knowledge_base'] = sync
+ return result
+
+
+if __name__=='__main__':
+ from db import init_db
+ init_db()
+ print(asyncio.run(run_scheduled_harvest()))

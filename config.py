@@ -30,6 +30,10 @@ class Settings:
     el_voice_id: str = os.getenv("EL_VOICE_ID", "")
     elevenlabs_agent_id: str = os.getenv("ELEVENLABS_AGENT_ID", "")
     elevenlabs_branch_id: str = os.getenv("ELEVENLABS_BRANCH_ID", "")
+    # Optional ID of the DJAGA public-intelligence text document in the
+    # ElevenLabs Knowledge Base. When unset, DJAGA can create it on the first
+    # authenticated sync and stores the returned ID in its own database.
+    elevenlabs_kb_document_id: str = os.getenv("ELEVENLABS_KB_DOCUMENT_ID", "")
     # OpenRouter multimodal model used for voice-note transcription and the
     # cautious voice-authenticity signal in the Voice Scanner.
     voice_forensics_model: str = os.getenv("VOICE_FORENSICS_MODEL", "google/gemini-3.1-flash-lite")

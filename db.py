@@ -390,6 +390,24 @@ def get_intelligence(kind: str) -> list[dict[str, Any]]:
     return [row["payload"] if isinstance(row["payload"], dict) else json.loads(row["payload"]) for row in rows]
 
 
+def get_intelligence_record(kind: str, record_key: str) -> dict[str, Any] | None:
+    """Read one small integration-state record from the existing data store."""
+    with connection() as con:
+        row = con.execute(
+            "SELECT payload FROM intelligence_records WHERE kind=? AND record_key=?",
+            (kind, record_key),
+        ).fetchone()
+    if not row:
+        return None
+    payload = row["payload"]
+    return payload if isinstance(payload, dict) else json.loads(payload)
+
+
+def set_intelligence_record(kind: str, record_key: str, payload: dict[str, Any]) -> None:
+    """Persist a small integration-state record without adding a new table."""
+    upsert_intelligence(kind, [{"id": record_key, **payload}], key="id")
+
+
 def top_identifier_match(kind: str, value: str) -> dict[str, Any] | None:
     """Find an exact phone/account hit in persisted Top 10 intelligence."""
     digits = re.sub(r"\D", "", value)

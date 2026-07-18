@@ -4,6 +4,8 @@ from fastapi import HTTPException
 from fastapi.responses import Response
 from config import settings
 
+_KB_BASE_URL = 'https://api.elevenlabs.io/v1/convai/knowledge-base'
+
 async def conversation_config(grounding_context: str = "") -> dict:
  """Return a public agent ID or a short-lived signed URL for a private agent."""
  if not settings.elevenlabs_agent_id:
@@ -38,3 +40,46 @@ async def synthesize(text:str)->Response:
  async with httpx.AsyncClient(timeout=60) as client:
   res=await client.post(f'https://api.elevenlabs.io/v1/text-to-speech/{settings.el_voice_id}',headers={'xi-api-key':settings.elevenlabs_api_key,'accept':'audio/mpeg','content-type':'application/json'},json={'text':text,'model_id':'eleven_multilingual_v2'});res.raise_for_status()
  return Response(res.content,media_type='audio/mpeg')
+
+
+async def sync_knowledge_base_document(content: str, document_id: str = '') -> dict:
+ """Create or update DJAGA's public-intelligence text document.
+
+ The caller supplies a snapshot made from DJAGA's database.  This keeps the
+ provider boundary explicit: only the public seven-day feed goes to
+ ElevenLabs, never saved checks, profile data, or chat history.
+ """
+ if not settings.elevenlabs_api_key:
+  return {'ok': False, 'skipped': True, 'reason': 'ELEVENLABS_API_KEY is not configured'}
+ if not content.strip():
+  return {'ok': False, 'skipped': True, 'reason': 'No public intelligence is available to sync'}
+ headers = {'xi-api-key': settings.elevenlabs_api_key, 'content-type': 'application/json'}
+ target = document_id.strip() or settings.elevenlabs_kb_document_id.strip()
+ try:
+  async with httpx.AsyncClient(timeout=15) as client:
+   if target:
+    response = await client.patch(
+     f'{_KB_BASE_URL}/{target}', headers=headers,
+     json={'name': 'DJAGA public intelligence — last 7 days', 'content': content},
+    )
+    action = 'updated'
+   else:
+    response = await client.post(
+     f'{_KB_BASE_URL}/text', headers=headers,
+     json={'name': 'DJAGA public intelligence — last 7 days', 'text': content},
+    )
+    action = 'created'
+ except httpx.HTTPError as error:
+  # A provider outage must not make feed refresh or the scheduled harvester
+  # fail after DJAGA has already written fresh intelligence to its database.
+  return {'ok': False, 'skipped': False, 'reason': f'ElevenLabs Knowledge Base request could not complete: {error.__class__.__name__}'}
+  if not response.is_success:
+   return {
+    'ok': False, 'skipped': False, 'reason': f'ElevenLabs Knowledge Base request failed ({response.status_code})',
+    'detail': response.text[:300],
+   }
+  payload = response.json()
+  resolved_id = str(payload.get('id') or target)
+  if not resolved_id:
+   return {'ok': False, 'skipped': False, 'reason': 'ElevenLabs did not return a document ID'}
+  return {'ok': True, 'action': action, 'document_id': resolved_id, 'characters': len(content)}

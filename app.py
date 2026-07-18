@@ -19,7 +19,7 @@ from assistant.tools import knowledge_base_snapshot, voice_grounding_context
 from auth import change_password, current_user, login, logout, mydigital_login, register
 from config import settings
 from contracts import FeedItem, User, Verdict
-from db import clear_user_history, create_check as db_create_check, get_check, get_feed, get_feed_report, get_intelligence, get_recent_feed, get_user_settings, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_user_settings, save_verdict, set_language, top_identifier_match, update_user_name, upsert_feed, weekly_intelligence_snapshot
+from db import clear_user_history, create_check as db_create_check, get_check, get_feed, get_feed_report, get_intelligence, get_intelligence_record, get_recent_feed, get_user_settings, get_verdict, init_db, list_checks, normalize_feed_source_names, save_community_report, save_user_settings, save_verdict, set_intelligence_record, set_language, top_identifier_match, update_user_name, upsert_feed, weekly_intelligence_snapshot
 from jobs.harvester import harvest
 from integrations.openrouter_client import extract_text_from_image
 from intelligence_engine import refresh_modus_operandi
@@ -293,6 +293,7 @@ async def refresh_feed(djaga_session: str | None = Cookie(None)):
     require_user(djaga_session)
     result = await asyncio.to_thread(harvest)
     result["modus_operandi"] = await refresh_modus_operandi()
+    result["elevenlabs_knowledge_base"] = await _sync_elevenlabs_knowledge_base()
     return result
 
 
@@ -483,6 +484,51 @@ def elevenlabs_knowledge_base() -> PlainTextResponse:
         knowledge_base_snapshot(),
         headers={"Cache-Control": "public, max-age=300"},
     )
+
+
+def _stored_elevenlabs_kb_document_id() -> str:
+    if settings.elevenlabs_kb_document_id:
+        return settings.elevenlabs_kb_document_id
+    state = get_intelligence_record("integration_state", "elevenlabs_knowledge_base") or {}
+    return str(state.get("document_id", ""))
+
+
+async def _sync_elevenlabs_knowledge_base() -> dict:
+    """Synchronise a database-derived public snapshot with ElevenLabs.
+
+    The first sync can create the text document. Its ID is persisted in
+    Supabase/SQLite so future feed refreshes update the same document.
+    """
+    from integrations.elevenlabs_client import sync_knowledge_base_document
+    result = await sync_knowledge_base_document(
+        knowledge_base_snapshot(), _stored_elevenlabs_kb_document_id(),
+    )
+    if result.get("ok") and result.get("document_id") and not settings.elevenlabs_kb_document_id:
+        set_intelligence_record(
+            "integration_state", "elevenlabs_knowledge_base",
+            {"document_id": result["document_id"], "updated_at": time.time()},
+        )
+    return result
+
+
+@app.post("/api/elevenlabs/knowledge-base/sync")
+async def sync_elevenlabs_knowledge_base(djaga_session: str | None = Cookie(None)):
+    """Manually sync public Supabase intelligence to the ElevenLabs KB."""
+    require_user(djaga_session)
+    return await _sync_elevenlabs_knowledge_base()
+
+
+@app.get("/api/elevenlabs/knowledge-base/status")
+async def elevenlabs_knowledge_base_status(djaga_session: str | None = Cookie(None)):
+    """Expose configuration state without leaking any provider credential."""
+    require_user(djaga_session)
+    document_id = _stored_elevenlabs_kb_document_id()
+    return {
+        "configured": bool(settings.elevenlabs_api_key),
+        "document_id": document_id or None,
+        "source": "SUPABASE public seven-day feed",
+        "private_data_included": False,
+    }
 
 
 @app.get("/api/demo/stream")

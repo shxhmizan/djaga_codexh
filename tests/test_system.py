@@ -6,6 +6,8 @@ os.environ['OSINT_MODE']='mock'
 os.environ['FORENSICS_AGENT_MODE']='mock'
 os.environ['TRANSCRIBE_AGENT_MODE']='mock'
 os.environ['OPENROUTER_API_KEY']=''
+os.environ['ELEVENLABS_API_KEY']=''
+os.environ['ELEVENLABS_KB_DOCUMENT_ID']=''
 # Tests must remain self-contained even when a developer has configured a
 # Supabase connection in their local .env file.
 os.environ['SUPABASE_DB_URL']=''
@@ -138,6 +140,18 @@ def test_elevenlabs_knowledge_base_snapshot_is_public_text():
   assert response.status_code == 200
   assert response.headers['content-type'].startswith('text/plain')
   assert 'DJAGA — Malaysian Scam Intelligence Snapshot' in response.text
+
+
+def test_elevenlabs_knowledge_base_sync_is_safe_without_a_key():
+ with TestClient(app) as client:
+  import uuid
+  client.post('/api/auth/register',json={'email':f'{uuid.uuid4()}@example.com','password':'longpassword','name':'Test User'})
+  status = client.get('/api/elevenlabs/knowledge-base/status')
+  assert status.status_code == 200
+  assert status.json()['private_data_included'] is False
+  sync = client.post('/api/elevenlabs/knowledge-base/sync')
+  assert sync.status_code == 200
+  assert sync.json()['skipped'] is True
 
 
 def test_image_verdict_preserves_the_actual_model_posterior():
