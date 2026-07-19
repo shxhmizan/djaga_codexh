@@ -2,7 +2,7 @@
 
 <p align="center">
   <strong>Deteksi Jaringan Gelagat Anomali</strong><br />
-  Malaysia’s AI scam-defence companionn
+  Malaysia’s AI scam-defence companion
 </p>
 
 <p align="center">
