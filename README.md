@@ -17,7 +17,7 @@
 
 DJAGA helps people investigate suspicious voice notes, images, messages, phone numbers, links, and bank accounts before they act. It combines specialised AI agents, evidence-cited verdicts, a Malaysia-wide intelligence map, community reporting, and a grounded assistant designed for practical scam-safety guidance.
 
-Built for the OpenAI Codex hackathon with a mobile-first, night-watch interface for a high-stress moment: *“Is this real, and what should I do next?”*
+Built for the OpenAI Codex hackathon
 
 <p align="center">
   <a href="#-run-locally">Quick start</a> ·
